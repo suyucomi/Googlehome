@@ -2,6 +2,8 @@
   <img src="src/assets/images/icon.svg" alt="logo" width="128px"/>
   <h1>Chrome 优雅新标签页</h1>
   <p>🌟 一个简洁、优雅且功能强大的 Chrome 新标签页扩展 🌟</p>
+  
+  <p>Google浏览器主页</p>
 </div>
 
 <p align="center">
