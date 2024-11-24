@@ -12,15 +12,13 @@
 
 <div align="center">
 
-[简体中文](./README.md) | [English](./README_EN.md)
-
 </div>
 
 ## 🌈 界面预览
 
 <div align="center">
   <img src="src\assets\images\主页.PNG" width="800px" alt="主界面"/>
-  <p align="center">✨ 简洁优雅的主界面 ✨</p>
+  <p align="center">简洁的主界面</p>
 </div>
 
 <div align="center">
@@ -36,7 +34,7 @@
       </td>
     </tr>
   </table>
-</div>
+</div>>
 
 ## ✨ 核心特性
 
@@ -108,4 +106,10 @@
 4. 拖拽图标可以调整顺序
 5. 右键图标可以编辑或删除
 6.支持自定义背景设置，可调节模糊度与亮度
+
+## 📈 浏览量
+
+<div align="center">
+  <img src="https://profile-counter.glitch.me/google-search/count.svg" alt="访问量统计"/>
+</div>
 
