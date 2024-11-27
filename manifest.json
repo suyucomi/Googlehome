@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Google 搜索",
-  "version": "1.0",
-  "description": "简单的 Google 搜索界面",
+  "name": "Google 主页",
+  "version": "1.0", 
+  "description": "简单的 Google 主页",
   "permissions": [
     "tabs",
     "activeTab",
-    "scripting",
+    "scripting", 
     "storage",
     "unlimitedStorage",
     "favicon"
@@ -21,14 +21,15 @@
   },
   "icons": {
     "16": "src/assets/images/icon16.png",
-    "48": "src/assets/images/icon48.png",
+    "48": "src/assets/images/icon48.png", 
     "128": "src/assets/images/icon128.png"
   },
   "web_accessible_resources": [{
     "resources": [
       "src/assets/icons/*.svg",
       "src/assets/images/*.png",
-      "src/assets/images/*.svg"
+      "src/assets/images/*.svg",
+      "src/assets/images/*.PNG"
     ],
     "matches": ["<all_urls>"]
   }],
