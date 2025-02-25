@@ -119,10 +119,33 @@ window.debounce = function(func, wait) {
   };
 };
 
-// 添加全局错误处理
+// 优化全局错误处理
 window.addEventListener('error', function(e) {
-  console.error('Global error:', e.error);
+  // 添加错误分类处理
+  const errorTypes = {
+    NETWORK_ERROR: 'NetworkError',
+    STORAGE_ERROR: 'StorageError',
+    RUNTIME_ERROR: 'RuntimeError'
+  };
+  
+  const errorHandler = {
+    [errorTypes.NETWORK_ERROR]: handleNetworkError,
+    [errorTypes.STORAGE_ERROR]: handleStorageError,
+    [errorTypes.RUNTIME_ERROR]: handleRuntimeError
+  };
+  
+  const errorType = determineErrorType(e.error);
+  if (errorHandler[errorType]) {
+    errorHandler[errorType](e.error);
+  } else {
+    console.error('未处理的错误:', e.error);
+  }
 });
+
+// 添加错误上报机制
+function reportError(error, context) {
+  // 实现错误上报逻辑
+}
 
 // 添加调试日志函数
 window.debug = {

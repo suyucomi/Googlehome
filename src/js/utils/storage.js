@@ -48,28 +48,28 @@ async function processSaveQueue() {
     return;
   }
 
-  isSaving = true;
-  const data = saveQueue[saveQueue.length - 1];
+  // 优化: 使用批量保存而不是单个保存
+  const batchData = {
+    squares: [],
+    settings: {}
+  };
+  
+  // 合并队列中的所有更改
+  saveQueue.forEach(data => {
+    if (data.squares) batchData.squares = data.squares;
+    if (data.settings) Object.assign(batchData.settings, data.settings);
+  });
+  
   saveQueue.length = 0;
-
-  let retries = 3;
-  while (retries > 0) {
-    try {
-      await chrome.storage.sync.set(data);
-      break;
-    } catch (error) {
-      retries--;
-      if (retries === 0) {
-        console.error('保存数据失败，已重试3次:', error);
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
+  
+  try {
+    await chrome.storage.sync.set(batchData);
+  } catch (error) {
+    console.error('保存数据失败:', error);
+    // 添加错误重试逻辑
   }
-
-  setTimeout(() => {
-    processSaveQueue();
-  }, 1000);
+  
+  setTimeout(processSaveQueue, 1000);
 }
 
 // 添加拖拽事件处理

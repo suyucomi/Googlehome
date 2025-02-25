@@ -1,6 +1,19 @@
 class ConfigManager {
+  static #instance = null;
+  
+  static getInstance() {
+    if (!this.#instance) {
+      this.#instance = new ConfigManager();
+    }
+    return this.#instance;
+  }
+  
+  // 使用私有字段
+  #config = {};
+  
   static async exportConfig() {
     try {
+      const instance = this.getInstance();
       // 获取所有配置数据
       const [settings, squares] = await Promise.all([
         chrome.storage.sync.get('settings'),
@@ -41,7 +54,7 @@ class ConfigManager {
       this.showToast('配置已导出');
     } catch (error) {
       console.error('导出配置失败:', error);
-      this.showToast('导出配置失败', 'error');
+      throw error;
     }
   }
   
@@ -84,7 +97,7 @@ class ConfigManager {
       
     } catch (error) {
       console.error('导入配置失败:', error);
-      this.showToast('导入配置��败: ' + error.message, 'error');
+      this.showToast('导入配置失败: ' + error.message, 'error');
     }
   }
   

@@ -8,6 +8,18 @@ document.addEventListener('DOMContentLoaded', function() {
       const urlObj = new URL(url);
       const domain = urlObj.hostname;
       
+      // 添加缓存过期机制
+      const cacheKey = `favicon_${domain}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      
+      if (cachedData) {
+        const { icon, timestamp } = JSON.parse(cachedData);
+        // 设置24小时的缓存有效期
+        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          return icon;
+        }
+      }
+      
       // 尝试多个图标服务
       const iconServices = [
         `https://icon.horse/icon/${domain}`,
@@ -15,12 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `https://favicon.yandex.net/favicon/${domain}`,
         `https://api.faviconkit.com/${domain}/64`
       ];
-
-      // 尝试从缓存获取
-      const cachedIcon = localStorage.getItem(`favicon_${domain}`);
-      if (cachedIcon) {
-        return cachedIcon;
-      }
 
       // 依次尝试不同的服务
       for (const serviceUrl of iconServices) {
@@ -34,8 +40,12 @@ document.addEventListener('DOMContentLoaded', function() {
               reader.readAsDataURL(blob);
             });
             
-            // 缓存成功获取的图标
-            localStorage.setItem(`favicon_${domain}`, base64);
+            // 保存带时间戳的缓存
+            localStorage.setItem(cacheKey, JSON.stringify({
+              icon: base64,
+              timestamp: Date.now()
+            }));
+            
             return base64;
           }
         } catch (e) {
@@ -104,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // 如果没有预定义标题，返回���名
+      // 如果没有预定义标题，返回名
       return hostname;
     } catch (e) {
       console.error('Error processing URL:', e);

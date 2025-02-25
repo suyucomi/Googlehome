@@ -34,6 +34,6 @@
     "matches": ["<all_urls>"]
   }],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; img-src * data: chrome: https:;"
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src * data: chrome: https:; connect-src 'self' https://*.google.com https://*.githubusercontent.com;"
   }
 }
