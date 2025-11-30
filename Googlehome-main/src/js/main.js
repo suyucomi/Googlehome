@@ -220,19 +220,18 @@ class SidebarManager {
     // 从本地存储恢复状态（仅桌面端）
     if (!this.isMobile) {
       const savedState = localStorage.getItem(this.storageKey);
-      if (savedState === 'closed') {
-        this.isOpen = false;
-        this.sidebar.classList.add('collapsed');
-        // 确保容器没有左边距
-        if (this.container) {
-          this.container.classList.remove('sidebar-open');
-        }
-      } else {
+      if (savedState === 'open') {
         this.isOpen = true;
         this.sidebar.classList.remove('collapsed');
-        // 确保容器有左边距
         if (this.container) {
           this.container.classList.add('sidebar-open');
+        }
+      } else {
+        // 默认收起
+        this.isOpen = false;
+        this.sidebar.classList.add('collapsed');
+        if (this.container) {
+          this.container.classList.remove('sidebar-open');
         }
       }
     } else {
@@ -395,10 +394,10 @@ class SidebarManager {
       document.body.classList.remove('sidebar-open-mobile');
       // 恢复保存的状态
       const savedState = localStorage.getItem(this.storageKey);
-      if (savedState === 'closed') {
-        this.close();
-      } else {
+      if (savedState === 'open') {
         this.open();
+      } else {
+        this.close();
       }
     }
     

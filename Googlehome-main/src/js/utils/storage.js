@@ -3,8 +3,6 @@ const saveQueue = [];
 let isSaving = false;
 let draggedItem = null;
 
-// 添加本地缓存
-const cache = new Map();
 
 // 优化保存操作
 const throttledSave = throttle(() => {
@@ -28,7 +26,10 @@ window.saveData = async function() {
     };
   });
 
-  const searchEngine = document.getElementById('searchEngine').value;
+  const engineEl = document.getElementById('searchEngine');
+  const searchEngine = (engineEl && engineEl.dataset && engineEl.dataset.engine) 
+    || localStorage.getItem('currentSearchEngine') 
+    || 'google';
   const data = {
     squares: squaresData,
     searchEngine: searchEngine
@@ -76,14 +77,12 @@ async function processSaveQueue() {
     // 即使数组为空也保存，以支持清空书签
     await chrome.storage.local.set({ squares: batchData.squares });
     
-    // 设置数据保存到同步存储（chrome.storage.sync）
     if (Object.keys(batchData.settings).length > 0) {
-      await chrome.storage.sync.set({ settings: batchData.settings });
+      await chrome.storage.local.set({ settings: batchData.settings });
     }
     
-    // 搜索引擎设置保存到同步存储
     if (batchData.searchEngine) {
-      await chrome.storage.sync.set({ searchEngine: batchData.searchEngine });
+      await chrome.storage.local.set({ searchEngine: batchData.searchEngine });
     }
   } catch (error) {
     console.error('保存数据失败:', error);
@@ -231,45 +230,7 @@ document.addEventListener('drop', (e) => {
   }
 });
 
-// 数据迁移：从 sync 迁移到 local，并迁移到多页面系统
-async function migrateDataFromSync() {
-  try {
-    // 如果已经有页面数据，不需要迁移
-    const pagesData = await chrome.storage.local.get('bookmarkPages');
-    if (pagesData.bookmarkPages && pagesData.bookmarkPages.length > 0) {
-      return;
-    }
-    
-    // 检查本地存储是否已有数据
-    const localData = await chrome.storage.local.get('squares');
-    if (localData.squares && localData.squares.length > 0) {
-      // 如果有旧数据，迁移到默认页面
-      if (window.pageManager) {
-        const defaultPage = await window.pageManager.createPage('默认页面');
-        await chrome.storage.local.set({ [`squares_${defaultPage.id}`]: localData.squares });
-        await chrome.storage.local.remove('squares'); // 删除旧数据
-        return;
-      }
-      return;
-    }
-    
-    // 从同步存储读取旧数据
-    const syncData = await chrome.storage.sync.get('squares');
-    if (syncData.squares && Array.isArray(syncData.squares) && syncData.squares.length > 0) {
-      // 如果有page-manager，迁移到默认页面
-      if (window.pageManager) {
-        const defaultPage = await window.pageManager.createPage('默认页面');
-        await chrome.storage.local.set({ [`squares_${defaultPage.id}`]: syncData.squares });
-      } else {
-        // 否则迁移到本地存储
-        await chrome.storage.local.set({ squares: syncData.squares });
-      }
-      console.log('书签数据已从同步存储迁移');
-    }
-  } catch (error) {
-    console.error('数据迁移失败:', error);
-  }
-}
+ 
 
 // 修改加载数据函数
 async function loadData() {
@@ -277,15 +238,13 @@ async function loadData() {
     const container = document.getElementById('squaresContainer');
     const searchEngine = document.getElementById('searchEngine');
     
-    // 先尝试数据迁移
-    await migrateDataFromSync();
+    const localSearch = await chrome.storage.local.get('searchEngine');
     
-    // 从同步存储读取搜索引擎设置
-    const syncData = await chrome.storage.sync.get('searchEngine');
-    
-    if (syncData.searchEngine) {
-      searchEngine.value = syncData.searchEngine;
-      searchEngine.dispatchEvent(new Event('change'));
+    if (localSearch.searchEngine) {
+      try { localStorage.setItem('currentSearchEngine', localSearch.searchEngine); } catch (e) {}
+      if (searchEngine) {
+        searchEngine.dataset.engine = localSearch.searchEngine;
+      }
     }
     
     // 如果有多页面管理器，从当前页面加载
@@ -327,7 +286,7 @@ async function loadData() {
         square.appendChild(spinner);
         
         // 异步获取图标（不阻塞 DOM 创建）
-        const faviconPromise = getFaviconWithCache(squareData.url).then(faviconUrl => {
+        const faviconPromise = (window.getFavicon ? window.getFavicon(squareData.url) : Promise.resolve(null)).then(faviconUrl => {
           if (faviconUrl && square.parentNode) {
             spinner.remove();
             square.style.setProperty('--favicon-url', `url('${faviconUrl}')`);
@@ -495,55 +454,3 @@ window.createContextMenu = function(x, y, square) {
   }, 0);
 }; 
 
-async function getFaviconWithCache(url) {
-  // 使用统一的全局 getFavicon 函数
-  if (window.getFavicon) {
-    return await window.getFavicon(url);
-  }
-  
-  // 降级方案：如果全局函数不存在，尝试从缓存获取
-  try {
-    const domain = new URL(url).hostname;
-    if (cache.has(domain)) {
-      return cache.get(domain);
-    }
-    
-    // 生成默认图标
-    const defaultIcon = generateDefaultIcon(domain);
-    cache.set(domain, defaultIcon);
-    return defaultIcon;
-  } catch (e) {
-    return generateDefaultIcon(url);
-  }
-}
-
-// 生成默认图标的辅助函数（如果不存在）
-function generateDefaultIcon(url) {
-  try {
-    const domain = new URL(url).hostname;
-    const letter = domain.charAt(0).toUpperCase();
-    const color = stringToColor(domain);
-    
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-        <rect width="64" height="64" rx="12" fill="${color}"/>
-        <text x="32" y="32" font-family="Arial" font-size="32" fill="white" 
-              text-anchor="middle" dominant-baseline="central">${letter}</text>
-      </svg>
-    `;
-    
-    return `data:image/svg+xml;base64,${btoa(svg)}`;
-  } catch (e) {
-    return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxMiIgZmlsbD0iIzMwMzEzNCIvPjx0ZXh0IHg9IjMyIiB5PSIzMiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjMyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiPj88L3RleHQ+PC9zdmc+';
-  }
-}
-
-// 字符串转颜色的辅助函数（如果不存在）
-function stringToColor(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 65%, 45%)`;
-} 

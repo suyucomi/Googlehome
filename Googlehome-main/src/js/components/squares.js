@@ -21,13 +21,13 @@ document.addEventListener('DOMContentLoaded', function() {
   function initializeDragAndDrop() {
     const squares = document.getElementsByClassName('square-container');
     const fragment = document.createDocumentFragment();
-    
-    // 将 HTMLCollection 转换为数组再使用 forEach
     Array.from(squares).forEach(square => {
-      addDragEvents(square);
+      const listItem = square.closest('.square-list-item') || square.parentElement;
+      if (listItem && typeof window.addDragEvents === 'function') {
+        window.addDragEvents(listItem);
+      }
       fragment.appendChild(square);
     });
-    
     container.appendChild(fragment);
   }
 
