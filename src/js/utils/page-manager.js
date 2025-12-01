@@ -36,9 +36,9 @@ class PageManager {
     // 渲染悬浮图标
     this.renderFloatingIcons();
     
-    // 加载当前页面的书签
+    // 加载当前页面的书签（首次加载，跳过动画）
     if (this.currentPageId) {
-      await this.loadPageBookmarks(this.currentPageId);
+      await this.loadPageBookmarks(this.currentPageId, true);
     }
     
     this.initialized = true;
@@ -158,47 +158,59 @@ class PageManager {
     this.currentPageId = pageId;
     await this.saveCurrentPageId();
     
-    // 加载新页面的书签
-    await this.loadPageBookmarks(pageId);
-    
-    // 更新页面列表显示
+    // 立即更新页面图标状态（无延迟）
     this.renderPages();
-    
-    // 更新悬浮图标
     this.renderFloatingIcons();
+    
+    // 清空当前书签（立即清空，不等待动画）
+    const container = document.getElementById('squaresContainer');
+    if (container) {
+      container.innerHTML = '';
+    }
+    
+    // 加载新页面的书签（慢慢浮现）
+    await this.loadPageBookmarks(pageId);
     
     // 更新页面计数
     await this.updatePageCount(pageId);
   }
 
   // 加载页面的书签
-  async loadPageBookmarks(pageId) {
+  async loadPageBookmarks(pageId, skipAnimation = false) {
     try {
       const container = document.getElementById('squaresContainer');
       if (!container) return;
-      
-      // 清空当前显示的书签
-      container.innerHTML = '';
       
       // 加载该页面的书签数据
       const data = await chrome.storage.local.get(`squares_${pageId}`);
       const squares = data[`squares_${pageId}`] || [];
       
-      // 使用统一的渲染逻辑
-      await this.renderBookmarks(squares, container);
+      // 使用统一的渲染逻辑（书签慢慢浮现）
+      await this.renderBookmarks(squares, container, skipAnimation);
     } catch (error) {
       console.error('加载页面书签失败:', error);
     }
   }
 
   // 渲染书签
-  async renderBookmarks(squares, container) {
+  async renderBookmarks(squares, container, skipAnimation = false) {
     const fragment = document.createDocumentFragment();
     const faviconPromises = [];
     
-    for (const squareData of squares) {
+    for (let i = 0; i < squares.length; i++) {
+      const squareData = squares[i];
       const listItem = document.createElement('div');
       listItem.className = 'square-list-item';
+      
+      // 如果不是首次加载，添加淡入动画（慢慢浮现）
+      if (!skipAnimation) {
+        // 添加淡入动画类，初始状态为隐藏
+        listItem.classList.add('fade-in');
+        // 设置延迟，创建错落有致的淡入效果
+        listItem.style.transitionDelay = `${i * 20}ms`;
+        listItem.style.opacity = '0';
+        listItem.style.transform = 'translateY(10px) scale(0.95)';
+      }
       
       const square = document.createElement('div');
       square.className = 'square-container';
@@ -214,26 +226,44 @@ class PageManager {
       square.appendChild(spinner);
       
       // 使用统一的图标获取函数
-      const getFaviconFunc = window.getFavicon || (async (url) => {
-        if (window.getFavicon) {
-          return await window.getFavicon(url);
+      const faviconPromise = (async () => {
+        try {
+          // 确保使用全局的 getFavicon 函数
+          if (typeof window.getFavicon === 'function') {
+            const faviconUrl = await window.getFavicon(squareData.url);
+            if (faviconUrl && square.parentNode) {
+              spinner.remove();
+              square.style.setProperty('--favicon-url', `url('${faviconUrl}')`);
+              square.style.setProperty('--favicon-size', '32px');
+            } else if (square.parentNode && spinner.parentNode) {
+              spinner.remove();
+            }
+          } else {
+            // 如果 getFavicon 不存在，等待一下再尝试
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (typeof window.getFavicon === 'function') {
+              const faviconUrl = await window.getFavicon(squareData.url);
+              if (faviconUrl && square.parentNode) {
+                spinner.remove();
+                square.style.setProperty('--favicon-url', `url('${faviconUrl}')`);
+                square.style.setProperty('--favicon-size', '32px');
+              } else if (square.parentNode && spinner.parentNode) {
+                spinner.remove();
+              }
+            } else {
+              // 如果还是不存在，移除spinner
+              if (square.parentNode && spinner.parentNode) {
+                spinner.remove();
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error loading favicon:', error);
+          if (square.parentNode && spinner.parentNode) {
+            spinner.remove();
+          }
         }
-        return null;
-      });
-      const faviconPromise = getFaviconFunc(squareData.url).then(faviconUrl => {
-        if (faviconUrl && square.parentNode) {
-          spinner.remove();
-          square.style.setProperty('--favicon-url', `url('${faviconUrl}')`);
-          square.style.setProperty('--favicon-size', '32px');
-        } else if (square.parentNode && spinner.parentNode) {
-          spinner.remove();
-        }
-      }).catch(error => {
-        console.error('Error loading favicon:', error);
-        if (square.parentNode && spinner.parentNode) {
-          spinner.remove();
-        }
-      });
+      })();
       faviconPromises.push(faviconPromise);
       
       square.addEventListener('click', function() {
@@ -264,6 +294,18 @@ class PageManager {
     }
     
     container.appendChild(fragment);
+    
+    // 如果不是首次加载，触发淡入动画
+    if (!skipAnimation) {
+      requestAnimationFrame(() => {
+        const items = container.querySelectorAll('.square-list-item');
+        items.forEach(item => {
+          item.style.opacity = '1';
+          item.style.transform = 'translateY(0) scale(1)';
+        });
+      });
+    }
+    
     await Promise.allSettled(faviconPromises);
   }
 

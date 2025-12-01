@@ -23,23 +23,38 @@ window.getFavicon = (() => {
           return cachedIcon;
         }
 
-        // 尝试获取图标
-        const response = await fetch(`https://icon.horse/icon/${domain}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const base64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-          
-          // 缓存图标
-          localStorage.setItem(`favicon_${domain}`, base64);
-          cache.set(domain, base64);
-          return base64;
+        // 尝试多个图标服务（按优先级）
+        const iconServices = [
+          `https://icon.horse/icon/${domain}`,
+          `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
+          `https://favicon.yandex.net/favicon/${domain}`,
+          `https://api.faviconkit.com/${domain}/64`
+        ];
+
+        // 依次尝试不同的服务
+        for (const serviceUrl of iconServices) {
+          try {
+            const response = await fetch(serviceUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              
+              // 缓存图标
+              localStorage.setItem(`favicon_${domain}`, base64);
+              cache.set(domain, base64);
+              return base64;
+            }
+          } catch (e) {
+            // 继续尝试下一个服务
+            continue;
+          }
         }
 
-        // 如果获取失败，生成默认图标
+        // 如果所有服务都失败，生成默认图标
         return generateDefaultIcon(domain);
       } catch (e) {
         console.error('Error loading favicon:', e);
