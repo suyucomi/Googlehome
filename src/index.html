@@ -8,13 +8,51 @@
 </head>
 <body>
   <div class="container">
-    <!-- 菜单按钮 -->
-    <button class="menu-button" id="menuButton" title="设置">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="2"/>
-        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z" stroke="currentColor" stroke-width="2"/>
+    <!-- 侧边栏触发按钮（移动端显示） -->
+    <button class="sidebar-trigger" id="sidebarTrigger" title="打开侧边栏">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
+    
+    <!-- 侧边栏 -->
+    <div class="sidebar collapsed" id="sidebar">
+      <div class="sidebar-header">
+        <h3>书签页面</h3>
+        <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="sidebar-content">
+        <!-- 书签页面列表 -->
+        <div class="bookmark-pages" id="bookmarkPages">
+          <!-- 页面项将通过JS动态添加 -->
+        </div>
+        
+        <!-- 添加新页面按钮 -->
+        <button class="add-page-btn" id="addPageBtn" title="添加新页面">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>添加页面</span>
+        </button>
+        
+        <!-- 设置按钮 -->
+        <button class="sidebar-settings-btn" id="sidebarSettingsBtn" title="设置">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>设置</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 侧边栏遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     
     <!-- 设置面板 -->
     <div class="settings-panel" id="settingsPanel">
@@ -75,10 +113,7 @@
     <!-- 预览遮罩 -->
     <div class="preview-overlay" id="previewOverlay"></div>
     
-    <!-- Logo区域 -->
-    <div class="logo"></div>
-
-    <!-- 搜索框区域 -->
+    <!-- 搜索框区域 - 移到顶部 -->
     <div class="search-container">
       <div class="search-box-wrapper">
         <!-- 搜索引擎选择器 -->
@@ -105,6 +140,8 @@
   <script src="js/utils/storage.js"></script>
   <!-- 设置管理器 -->
   <script src="js/utils/settings-manager.js"></script>
+  <!-- 页面管理器 -->
+  <script src="js/utils/page-manager.js"></script>
   <!-- 动画相关功能 -->
   <script src="js/utils/animation.js"></script>
   <!-- 拖拽相功能 -->

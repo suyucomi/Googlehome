@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchEngineDropdown = document.getElementById('searchEngineDropdown');
   const searchSelectContainer = searchEngine?.parentElement;
   const settingsPanel = document.getElementById('settingsPanel');
-  const menuButton = document.getElementById('menuButton');
   const closeSettings = document.getElementById('closeSettings');
   
   let currentEngine = localStorage.getItem('currentSearchEngine') || 'google';
@@ -21,9 +20,18 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // 加载 SVG 图标
       fetch(engine.icon)
-        .then(response => response.text())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load icon: ${response.status}`);
+          }
+          return response.text();
+        })
         .then(svgContent => {
           icon.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
+        })
+        .catch(error => {
+          console.warn(`Failed to load icon for ${engine.name}:`, error);
+          // 使用默认图标或隐藏图标
         });
       
       const text = document.createElement('span');
@@ -50,15 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.placeholder = `在 ${engine.name} 上搜索`;
     searchEngine.dataset.engine = currentEngine;
     
-    searchEngine.classList.add('changing');
-    
+    // 直接更新图标，不使用动画类
     fetch(engine.icon)
-      .then(response => response.text())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to load icon: ${response.status}`);
+        }
+        return response.text();
+      })
       .then(svgContent => {
-        requestAnimationFrame(() => {
-          searchEngine.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
-          searchEngine.classList.remove('changing');
-        });
+        searchEngine.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
+      })
+      .catch(error => {
+        console.warn(`Failed to load icon for ${engine.name}:`, error);
+        // 使用默认图标或隐藏图标
       });
   };
   
@@ -69,9 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // 点击外部关闭下拉列表和设置面板
-  document.addEventListener('click', () => {
+  document.addEventListener('click', (e) => {
     searchSelectContainer?.classList.remove('active');
-    settingsPanel?.classList.remove('active');
+    // 如果点击的不是侧边栏内部，关闭设置面板
+    if (!e.target.closest('.sidebar') && !e.target.closest('.settings-panel')) {
+      settingsPanel?.classList.remove('active');
+    }
   });
   
   // 初始化
@@ -96,8 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 设置面板控制
-  menuButton?.addEventListener('click', (e) => {
+  // 侧边栏设置按钮控制
+  const sidebarSettingsBtn = document.getElementById('sidebarSettingsBtn');
+  sidebarSettingsBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     settingsPanel?.classList.toggle('active');
   });
@@ -124,74 +141,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 添加设置面板功能按钮的事件监听
-  const exportAll = document.getElementById('exportAll');
-  const exportIcons = document.getElementById('exportIcons');
-  const exportSettings = document.getElementById('exportSettings');
   const importConfig = document.getElementById('importConfig');
-  const resetDefault = document.getElementById('resetDefault');
   const configFileInput = document.getElementById('configFileInput');
   const exportConfig = document.getElementById('exportConfig');
-
-  // 导出所有配置
-  exportAll?.addEventListener('click', async () => {
-    try {
-      await ConfigManager.exportConfig();
-    } catch (error) {
-      ConfigManager.showToast('导出失败', 'error');
-    }
-  });
-
-  // 仅导出图标
-  exportIcons?.addEventListener('click', async () => {
-    try {
-      const data = await chrome.storage.sync.get('squares');
-      const blob = new Blob([JSON.stringify({ squares: data.squares }, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().split('T')[0];
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `search-icons-${date}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      ConfigManager.showToast('图标配置已导出');
-    } catch (error) {
-      ConfigManager.showToast('导出失败', 'error');
-    }
-  });
-
-  // 仅导出设置
-  exportSettings?.addEventListener('click', async () => {
-    try {
-      const data = await chrome.storage.sync.get('settings');
-      const blob = new Blob([JSON.stringify({ settings: data.settings }, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().split('T')[0];
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `search-settings-${date}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      ConfigManager.showToast('设置已导出');
-    } catch (error) {
-      ConfigManager.showToast('导出失败', 'error');
-    }
-  });
 
   // 导出配置
   exportConfig?.addEventListener('click', async () => {
     try {
-      await ConfigManager.exportConfig();
+      if (window.ConfigManager) {
+        await window.ConfigManager.exportConfig();
+      }
     } catch (error) {
       console.error('导出失败:', error);
-      ConfigManager.showToast('导出失败', 'error');
+      if (window.ConfigManager) {
+        window.ConfigManager.showToast('导出失败', 'error');
+      }
     }
   });
 
@@ -205,26 +169,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        await ConfigManager.importConfig(file);
+        if (window.ConfigManager) {
+          await window.ConfigManager.importConfig(file);
+        }
       } catch (error) {
         console.error('导入失败:', error);
-        ConfigManager.showToast('导入失败', 'error');
+        if (window.ConfigManager) {
+          window.ConfigManager.showToast('导入失败', 'error');
+        }
       }
     }
     // 清空选择，允许选择相同文件
     e.target.value = '';
-  });
-
-  // 恢复默认设置
-  resetDefault?.addEventListener('click', async () => {
-    if (confirm('确定要恢复默认设置吗？这将清除所有自定义配置。')) {
-      try {
-        await chrome.storage.sync.clear();
-        window.location.reload();
-      } catch (error) {
-        ConfigManager.showToast('恢复默认设置失败', 'error');
-      }
-    }
   });
 
   // 阻止设置面板内的点击事件冒泡
@@ -232,13 +188,250 @@ document.addEventListener('DOMContentLoaded', () => {
   settingsContent?.addEventListener('click', (e) => {
     e.stopPropagation();
   });
+  
+  // 初始化侧边栏
+  initSidebar();
 });
 
-// 禁用右键菜单
-document.addEventListener('contextmenu', e => e.preventDefault()); 
-
-// 按需加载模块
-async function loadSettingsModule() {
-  const { SettingsManager } = await import('./utils/settings-manager.js');
-  return new SettingsManager();
+// 侧边栏管理器
+class SidebarManager {
+  constructor() {
+    this.sidebar = document.getElementById('sidebar');
+    this.sidebarToggle = document.getElementById('sidebarToggle');
+    this.sidebarTrigger = document.getElementById('sidebarTrigger');
+    this.sidebarOverlay = document.getElementById('sidebarOverlay');
+    this.addPageBtn = document.getElementById('addPageBtn');
+    this.container = document.querySelector('.container');
+    
+    // 状态管理
+    this.isOpen = false;
+    this.isAnimating = false;
+    this.storageKey = 'sidebarState';
+    
+    // 响应式断点
+    this.isMobile = window.innerWidth <= 768;
+    
+    if (!this.sidebar || !this.sidebarToggle) return;
+    
+    this.init();
+  }
+  
+  init() {
+    // 从本地存储恢复状态（仅桌面端）
+    if (!this.isMobile) {
+      const savedState = localStorage.getItem(this.storageKey);
+      if (savedState === 'open') {
+        this.isOpen = true;
+        this.sidebar.classList.remove('collapsed');
+        if (this.container) {
+          this.container.classList.add('sidebar-open');
+        }
+      } else {
+        // 默认收起
+        this.isOpen = false;
+        this.sidebar.classList.add('collapsed');
+        if (this.container) {
+          this.container.classList.remove('sidebar-open');
+        }
+      }
+    } else {
+      // 移动端默认关闭
+      this.isOpen = false;
+      this.sidebar.classList.add('collapsed');
+      // 移动端容器不需要左边距
+      if (this.container) {
+        this.container.classList.remove('sidebar-open');
+      }
+    }
+    
+    // 绑定事件
+    this.bindEvents();
+    
+    // 监听窗口大小变化
+    window.addEventListener('resize', () => {
+      this.handleResize();
+    });
+  }
+  
+  bindEvents() {
+    // 切换按钮点击事件
+    this.sidebarToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+    
+    // 触发按钮点击事件（移动端）
+    this.sidebarTrigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.open();
+    });
+    
+    // 遮罩层点击关闭
+    this.sidebarOverlay?.addEventListener('click', () => {
+      this.close();
+    });
+    
+    // 阻止侧边栏内部点击事件冒泡
+    this.sidebar.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    
+    // ESC 键关闭侧边栏
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isOpen) {
+        this.close();
+      }
+    });
+    
+    // 添加新页面按钮
+    this.addPageBtn?.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (window.pageManager) {
+        await window.pageManager.createPage();
+        if (window.ConfigManager) {
+          window.ConfigManager.showToast('新页面已创建');
+        }
+      }
+    });
+  }
+  
+  // 打开侧边栏
+  open() {
+    if (this.isAnimating || this.isOpen) return;
+    
+    this.isAnimating = true;
+    this.isOpen = true;
+    
+    // 移除收起状态
+    this.sidebar.classList.remove('collapsed');
+    
+    // 显示遮罩层
+    if (this.sidebarOverlay) {
+      this.sidebarOverlay.classList.add('active');
+    }
+    
+    // 调整容器位置（桌面端）
+    if (!this.isMobile && this.container) {
+      this.container.classList.add('sidebar-open');
+    } else if (this.isMobile && this.container) {
+      // 移动端打开时不需要调整容器位置
+      this.container.classList.remove('sidebar-open');
+    }
+    
+    // 移动端防止背景滚动
+    if (this.isMobile) {
+      document.body.classList.add('sidebar-open-mobile');
+    }
+    
+    // 保存状态（仅桌面端）
+    if (!this.isMobile) {
+      localStorage.setItem(this.storageKey, 'open');
+    }
+    
+    // 动画完成后重置标志
+    setTimeout(() => {
+      this.isAnimating = false;
+    }, 300);
+    
+    // 触发自定义事件
+    this.dispatchEvent('sidebar:opened');
+  }
+  
+  // 关闭侧边栏
+  close() {
+    if (this.isAnimating || !this.isOpen) return;
+    
+    this.isAnimating = true;
+    this.isOpen = false;
+    
+    // 添加收起状态
+    this.sidebar.classList.add('collapsed');
+    
+    // 隐藏遮罩层
+    if (this.sidebarOverlay) {
+      this.sidebarOverlay.classList.remove('active');
+    }
+    
+    // 恢复容器位置
+    if (this.container) {
+      this.container.classList.remove('sidebar-open');
+    }
+    
+    // 移动端恢复背景滚动
+    document.body.classList.remove('sidebar-open-mobile');
+    
+    // 保存状态（仅桌面端）
+    if (!this.isMobile) {
+      localStorage.setItem(this.storageKey, 'closed');
+    }
+    
+    // 动画完成后重置标志
+    setTimeout(() => {
+      this.isAnimating = false;
+    }, 300);
+    
+    // 触发自定义事件
+    this.dispatchEvent('sidebar:closed');
+  }
+  
+  // 切换侧边栏状态
+  toggle() {
+    if (this.isOpen) {
+      this.close();
+    } else {
+      this.open();
+    }
+  }
+  
+  // 处理窗口大小变化
+  handleResize() {
+    const wasMobile = this.isMobile;
+    this.isMobile = window.innerWidth <= 768;
+    
+    // 从移动端切换到桌面端
+    if (wasMobile && !this.isMobile) {
+      // 移除移动端样式
+      document.body.classList.remove('sidebar-open-mobile');
+      // 恢复保存的状态
+      const savedState = localStorage.getItem(this.storageKey);
+      if (savedState === 'open') {
+        this.open();
+      } else {
+        this.close();
+      }
+    }
+    
+    // 从桌面端切换到移动端
+    if (!wasMobile && this.isMobile) {
+      // 移动端默认关闭
+      if (this.isOpen) {
+        document.body.classList.add('sidebar-open-mobile');
+      }
+      // 如果侧边栏是打开的，保持打开状态但应用移动端样式
+    }
+  }
+  
+  // 触发自定义事件
+  dispatchEvent(eventName) {
+    const event = new CustomEvent(eventName, {
+      detail: { isOpen: this.isOpen }
+    });
+    document.dispatchEvent(event);
+  }
+  
+  // 获取当前状态
+  getState() {
+    return {
+      isOpen: this.isOpen,
+      isMobile: this.isMobile
+    };
+  }
 }
+
+// 初始化侧边栏
+function initSidebar() {
+  window.sidebarManager = new SidebarManager();
+}
+
+// 禁用右键菜单
+document.addEventListener('contextmenu', e => e.preventDefault());

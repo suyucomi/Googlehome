@@ -13,19 +13,60 @@ class ConfigManager {
   
   static async exportConfig() {
     try {
-      const instance = this.getInstance();
-      // 获取所有配置数据
-      const [settings, squares] = await Promise.all([
-        chrome.storage.sync.get('settings'),
-        chrome.storage.sync.get('squares')
-      ]);
-      
-      // 修改数据结构
+      const currentEngine = localStorage.getItem('currentSearchEngine');
+
+      let settings = { settings: {} };
+      let legacySquares = { squares: [] };
+      let searchEngineStored = { searchEngine: undefined };
+      let pagesMeta = { bookmarkPages: [], currentPageId: null };
+      let perPage = {};
+
+      if (window.chrome && chrome.storage && chrome.storage.local) {
+        try {
+          const meta = await chrome.storage.local.get(['settings', 'squares', 'searchEngine', 'bookmarkPages', 'currentPageId']);
+          settings = { settings: meta.settings || {} };
+          legacySquares = { squares: meta.squares || [] };
+          searchEngineStored = { searchEngine: meta.searchEngine };
+          pagesMeta = { bookmarkPages: meta.bookmarkPages || [], currentPageId: meta.currentPageId || null };
+          if (pagesMeta.bookmarkPages && pagesMeta.bookmarkPages.length > 0) {
+            const ids = pagesMeta.bookmarkPages.map(p => p.id);
+            const results = await Promise.all(ids.map(id => chrome.storage.local.get(`squares_${id}`)));
+            ids.forEach((id, idx) => {
+              perPage[id] = results[idx][`squares_${id}`] || [];
+            });
+          }
+        } catch (e) {
+        }
+      } else {
+        try {
+          const lsSettings = localStorage.getItem('settings');
+          if (lsSettings) settings = { settings: JSON.parse(lsSettings) };
+          const lsSquares = localStorage.getItem('squares');
+          if (lsSquares) legacySquares = { squares: JSON.parse(lsSquares) };
+        } catch (e) {}
+        const listItems = document.querySelectorAll('.square-list-item');
+        if ((!legacySquares.squares || legacySquares.squares.length === 0) && listItems.length > 0) {
+          const rebuilt = Array.from(listItems).map(item => {
+            const square = item.querySelector('.square-container');
+            const title = item.querySelector('.square-title');
+            return {
+              url: square?.dataset?.url || '',
+              title: title?.textContent || ''
+            };
+          });
+          legacySquares = { squares: rebuilt };
+        }
+      }
+
       const data = {
-        version: '1.0',
+        version: '1.1',
         timestamp: new Date().toISOString(),
         settings: settings.settings || {},
-        squares: squares.squares || []  // 直接使用 squares 数组
+        searchEngine: currentEngine || searchEngineStored.searchEngine || 'google',
+        bookmarkPages: pagesMeta.bookmarkPages || [],
+        currentPageId: pagesMeta.currentPageId || null,
+        pages: perPage,
+        legacySquares: legacySquares.squares || []
       };
       
       // 创建 Blob
@@ -76,15 +117,53 @@ class ConfigManager {
       // 显示导入进度
       this.showToast('正在导入配置...', 'info');
       
-      // 清除现有配置
-      await chrome.storage.sync.clear();
+      if (window.chrome && chrome.storage && chrome.storage.local) {
+        try {
+          await chrome.storage.local.clear();
+        } catch (e) {}
+      }
       
       // 导入新配置
       if (config.settings) {
-        await chrome.storage.sync.set({ settings: config.settings });
+        if (window.chrome && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ settings: config.settings });
+        } else {
+          try { localStorage.setItem('settings', JSON.stringify(config.settings)); } catch (e) {}
+        }
       }
+      // 书签数据导入到本地存储
       if (config.squares) {
-        await chrome.storage.sync.set({ squares: config.squares });
+        if (window.chrome && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ squares: config.squares });
+        } else {
+          try { localStorage.setItem('squares', JSON.stringify(config.squares)); } catch (e) {}
+        }
+      }
+      if (config.searchEngine) {
+        if (window.chrome && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ searchEngine: config.searchEngine });
+        }
+        try { localStorage.setItem('currentSearchEngine', config.searchEngine); } catch (e) {}
+      }
+
+      if (config.bookmarkPages && Array.isArray(config.bookmarkPages)) {
+        if (window.chrome && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ bookmarkPages: config.bookmarkPages });
+          await chrome.storage.local.set({ currentPageId: config.currentPageId || null });
+          const ids = config.bookmarkPages.map(p => p.id);
+          await Promise.all(ids.map(id => chrome.storage.local.set({ [`squares_${id}`]: (config.pages && config.pages[id]) || [] })));
+        } else {
+          try {
+            localStorage.setItem('bookmarkPages', JSON.stringify(config.bookmarkPages));
+            if (config.currentPageId) localStorage.setItem('currentPageId', config.currentPageId);
+          } catch (e) {}
+        }
+      } else if (config.legacySquares && Array.isArray(config.legacySquares)) {
+        if (window.chrome && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({ squares: config.legacySquares });
+        } else {
+          try { localStorage.setItem('squares', JSON.stringify(config.legacySquares)); } catch (e) {}
+        }
       }
       
       // 显示成功消息
@@ -102,31 +181,29 @@ class ConfigManager {
   }
   
   static validateConfig(config) {
-    // 只保留基本验证
     if (!config || typeof config !== 'object') {
-      console.error('无效的配置对象');
       return false;
     }
-    
     if (!config.version) {
-      console.error('缺少版本信息');
       return false;
     }
-    
-    if (config.squares && !Array.isArray(config.squares)) {
-      console.error('无效的方块数据格式');
+    const checkSquaresArr = (arr) => Array.isArray(arr) && arr.every(s => s && typeof s.url === 'string' && typeof s.title === 'string');
+    if (config.squares && !checkSquaresArr(config.squares)) {
       return false;
     }
-    
-    if (config.squares && !config.squares.every(square => 
-      square && 
-      typeof square.url === 'string' && 
-      typeof square.title === 'string'
-    )) {
-      console.error('方块数据格式不正确');
+    if (config.legacySquares && !checkSquaresArr(config.legacySquares)) {
       return false;
     }
-    
+    if (config.bookmarkPages) {
+      if (!Array.isArray(config.bookmarkPages)) return false;
+      if (!config.bookmarkPages.every(p => p && typeof p.id === 'string' && typeof p.name === 'string')) return false;
+      if (config.pages) {
+        const ids = Object.keys(config.pages);
+        for (const id of ids) {
+          if (!checkSquaresArr(config.pages[id])) return false;
+        }
+      }
+    }
     return true;
   }
   
@@ -154,18 +231,6 @@ class ConfigManager {
     }, 3000);
   }
   
-  static async loadImage(url) {
-    if ('loading' in HTMLImageElement.prototype) {
-      img.loading = 'lazy';
-    } else {
-      // 降级方案：使用 Intersection Observer
-      const observer = new IntersectionObserver(/* ... */);
-    }
-  }
-  
-  static async saveConfig(config) {
-    // 保留现有的保存实现...
-  }
 }
 
 window.ConfigManager = ConfigManager; 

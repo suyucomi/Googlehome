@@ -3,18 +3,16 @@ const saveQueue = [];
 let isSaving = false;
 let draggedItem = null;
 
-// 添加本地缓存
-const cache = new Map();
 
 // 优化保存操作
 const throttledSave = throttle(() => {
   saveData();
 }, 1000);
 
-// 优化搜索操作
-const debouncedSearch = debounce((value) => {
-  performSearch(value);
-}, 300);
+// 优化搜索操作（如果需要的话，可以在这里添加搜索功能）
+// const debouncedSearch = debounce((value) => {
+//   performSearch(value);
+// }, 300);
 
 // 将函数暴露到全局
 window.saveData = async function() {
@@ -28,16 +26,26 @@ window.saveData = async function() {
     };
   });
 
-  const searchEngine = document.getElementById('searchEngine').value;
+  const engineEl = document.getElementById('searchEngine');
+  const searchEngine = (engineEl && engineEl.dataset && engineEl.dataset.engine) 
+    || localStorage.getItem('currentSearchEngine') 
+    || 'google';
   const data = {
     squares: squaresData,
     searchEngine: searchEngine
   };
 
-  saveQueue.push(data);
-  
-  if (!isSaving) {
-    processSaveQueue();
+  // 如果有多页面管理器，保存到当前页面
+  if (window.pageManager && window.pageManager.getCurrentPageId()) {
+    const pageId = window.pageManager.getCurrentPageId();
+    await chrome.storage.local.set({ [`squares_${pageId}`]: squaresData });
+    await window.pageManager.updatePageCount(pageId);
+  } else {
+    // 兼容旧版本：保存到默认位置
+    saveQueue.push(data);
+    if (!isSaving) {
+      processSaveQueue();
+    }
   }
 };
 
@@ -51,19 +59,31 @@ async function processSaveQueue() {
   // 优化: 使用批量保存而不是单个保存
   const batchData = {
     squares: [],
-    settings: {}
+    settings: {},
+    searchEngine: null
   };
   
   // 合并队列中的所有更改
   saveQueue.forEach(data => {
     if (data.squares) batchData.squares = data.squares;
     if (data.settings) Object.assign(batchData.settings, data.settings);
+    if (data.searchEngine) batchData.searchEngine = data.searchEngine;
   });
   
   saveQueue.length = 0;
   
   try {
-    await chrome.storage.sync.set(batchData);
+    // 书签数据保存到本地存储（chrome.storage.local）
+    // 即使数组为空也保存，以支持清空书签
+    await chrome.storage.local.set({ squares: batchData.squares });
+    
+    if (Object.keys(batchData.settings).length > 0) {
+      await chrome.storage.local.set({ settings: batchData.settings });
+    }
+    
+    if (batchData.searchEngine) {
+      await chrome.storage.local.set({ searchEngine: batchData.searchEngine });
+    }
   } catch (error) {
     console.error('保存数据失败:', error);
     // 添加错误重试逻辑
@@ -72,8 +92,8 @@ async function processSaveQueue() {
   setTimeout(processSaveQueue, 1000);
 }
 
-// 添加拖拽事件处理
-function addDragEvents(listItem) {
+// 添加拖拽事件处理（暴露到全局）
+window.addDragEvents = function(listItem) {
   listItem.setAttribute('draggable', true);
   let hoveredItem = null;
   
@@ -161,7 +181,7 @@ function addDragEvents(listItem) {
     
     saveData();
   });
-}
+};
 
 // 添加页面级别的拖拽监听
 document.addEventListener('dragover', (e) => {
@@ -210,21 +230,41 @@ document.addEventListener('drop', (e) => {
   }
 });
 
+ 
+
 // 修改加载数据函数
 async function loadData() {
   try {
     const container = document.getElementById('squaresContainer');
     const searchEngine = document.getElementById('searchEngine');
     
-    const data = await chrome.storage.sync.get(['squares', 'searchEngine']);
+    const localSearch = await chrome.storage.local.get('searchEngine');
     
-    if (data.searchEngine) {
-      searchEngine.value = data.searchEngine;
-      searchEngine.dispatchEvent(new Event('change'));
+    if (localSearch.searchEngine) {
+      try { localStorage.setItem('currentSearchEngine', localSearch.searchEngine); } catch (e) {}
+      if (searchEngine) {
+        searchEngine.dataset.engine = localSearch.searchEngine;
+      }
     }
     
-    if (data.squares && Array.isArray(data.squares)) {
-      for (const squareData of data.squares) {
+    // 如果有多页面管理器，从当前页面加载
+    let squares = [];
+    if (window.pageManager && window.pageManager.getCurrentPageId()) {
+      const pageId = window.pageManager.getCurrentPageId();
+      const pageData = await chrome.storage.local.get(`squares_${pageId}`);
+      squares = pageData[`squares_${pageId}`] || [];
+    } else {
+      // 兼容旧版本：从默认位置加载
+      const localData = await chrome.storage.local.get('squares');
+      squares = localData.squares || [];
+    }
+    
+    if (squares && Array.isArray(squares) && squares.length > 0) {
+      // 优化：使用 DocumentFragment 批量创建 DOM，减少重排
+      const fragment = document.createDocumentFragment();
+      const faviconPromises = [];
+      
+      for (const squareData of squares) {
         // 创建列表项
         const listItem = document.createElement('div');
         listItem.className = 'square-list-item';
@@ -245,14 +285,22 @@ async function loadData() {
         spinner.className = 'loading-spinner';
         square.appendChild(spinner);
         
-        // 获取图标
-        getFaviconWithCache(squareData.url).then(faviconUrl => {
-          if (faviconUrl) {
+        // 异步获取图标（不阻塞 DOM 创建）
+        const faviconPromise = (window.getFavicon ? window.getFavicon(squareData.url) : Promise.resolve(null)).then(faviconUrl => {
+          if (faviconUrl && square.parentNode) {
             spinner.remove();
             square.style.setProperty('--favicon-url', `url('${faviconUrl}')`);
             square.style.setProperty('--favicon-size', '32px');
+          } else if (square.parentNode) {
+            spinner.remove();
+          }
+        }).catch(error => {
+          console.error('Error loading favicon:', error);
+          if (square.parentNode && spinner.parentNode) {
+            spinner.remove();
           }
         });
+        faviconPromises.push(faviconPromise);
         
         // 添加事件监听
         square.addEventListener('click', function() {
@@ -269,11 +317,21 @@ async function loadData() {
         listItem.appendChild(titleSpan);
         
         // 添加拖拽事件
-        addDragEvents(listItem);
+        if (typeof window.addDragEvents === 'function') {
+          window.addDragEvents(listItem);
+        }
         
-        // 添加到容器
-        container.appendChild(listItem);
+        // 添加到 fragment
+        fragment.appendChild(listItem);
       }
+      
+      // 一次性添加到容器，减少重排
+      container.appendChild(fragment);
+      
+      // 等待所有图标加载完成（不阻塞渲染）
+      Promise.allSettled(faviconPromises).catch(() => {
+        // 静默处理错误
+      });
     }
   } catch (error) {
     console.error('Error loading data:', error);
@@ -282,6 +340,31 @@ async function loadData() {
 
 // 页载时初始化
 document.addEventListener('DOMContentLoaded', async () => {
+  // 如果有多页面管理器，等待它初始化完成
+  if (window.pageManager) {
+    // 等待页面管理器初始化
+    await new Promise(resolve => {
+      let attempts = 0;
+      const maxAttempts = 20; // 最多等待2秒 (20 * 100ms)
+      const checkInit = setInterval(() => {
+        attempts++;
+        if (window.pageManager && window.pageManager.initialized) {
+          clearInterval(checkInit);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInit);
+          resolve();
+        }
+      }, 100);
+    });
+    
+    // 如果page-manager已经初始化并加载了书签，就不需要再调用loadData
+    if (window.pageManager.initialized) {
+      return;
+    }
+  }
+  
+  // 如果没有page-manager或未初始化，使用旧的加载方式
   await loadData();
 });
 
@@ -310,7 +393,7 @@ window.createContextMenu = function(x, y, square) {
     const name = square.dataset.title;
     
     // 使用与粘贴相同的弹窗
-    const confirmed = await createNameDialog(url, name);
+    const confirmed = await window.createNameDialog(url, name);
     
     if (confirmed) {
       square.dataset.title = confirmed.name;
@@ -370,13 +453,3 @@ window.createContextMenu = function(x, y, square) {
     document.addEventListener('contextmenu', closeMenu);
   }, 0);
 }; 
-
-async function getFaviconWithCache(domain) {
-  if (cache.has(domain)) {
-    return cache.get(domain);
-  }
-  
-  const favicon = await getFavicon(domain);
-  cache.set(domain, favicon);
-  return favicon;
-} 
