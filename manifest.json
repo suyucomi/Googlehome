@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Google 主页",
+  "version": "1.0", 
+  "description": "简单的 Google 主页",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting", 
+    "storage",
+    "unlimitedStorage",
+    "favicon"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "src/index.html"
+  },
+  "icons": {
+    "16": "src/assets/images/icon16.png",
+    "48": "src/assets/images/icon48.png", 
+    "128": "src/assets/images/icon128.png"
+  },
+  "web_accessible_resources": [{
+    "resources": [
+      "src/assets/icons/*.svg",
+      "src/assets/images/*.png",
+      "src/assets/images/*.svg",
+      "src/assets/images/*.PNG"
+    ],
+    "matches": ["<all_urls>"]
+  }],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src * data: chrome: https:; connect-src 'self' https://*.google.com https://*.githubusercontent.com;"
+  }
+}
