@@ -33,6 +33,9 @@ class PageManager {
     // 渲染页面列表
     this.renderPages();
     
+    // 渲染悬浮图标
+    this.renderFloatingIcons();
+    
     // 加载当前页面的书签
     if (this.currentPageId) {
       await this.loadPageBookmarks(this.currentPageId);
@@ -92,6 +95,7 @@ class PageManager {
     this.pages.push(newPage);
     await this.savePages();
     this.renderPages();
+    this.renderFloatingIcons();
     
     // 切换到新页面
     await this.switchPage(newPage.id);
@@ -124,6 +128,7 @@ class PageManager {
       }
       
       this.renderPages();
+      this.renderFloatingIcons();
       if (window.ConfigManager) {
         window.ConfigManager.showToast('页面已删除');
       }
@@ -158,6 +163,9 @@ class PageManager {
     
     // 更新页面列表显示
     this.renderPages();
+    
+    // 更新悬浮图标
+    this.renderFloatingIcons();
     
     // 更新页面计数
     await this.updatePageCount(pageId);
@@ -268,7 +276,40 @@ class PageManager {
       page.bookmarkCount = squares.length;
       await this.savePages();
       this.renderPages();
+      this.renderFloatingIcons();
     }
+  }
+
+  // 渲染悬浮页面图标
+  renderFloatingIcons() {
+    const container = document.getElementById('floatingPageIcons');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    this.pages.forEach(page => {
+      const icon = document.createElement('div');
+      icon.className = 'floating-page-icon';
+      icon.dataset.pageId = page.id;
+      
+      if (page.id === this.currentPageId) {
+        icon.classList.add('active');
+      }
+      
+      icon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="page-tooltip">${page.name}</div>
+      `;
+      
+      icon.addEventListener('click', () => {
+        this.switchPage(page.id);
+      });
+      
+      container.appendChild(icon);
+    });
   }
 
   // 渲染页面列表
@@ -334,6 +375,9 @@ class PageManager {
       
       container.appendChild(item);
     });
+    
+    // 同时更新悬浮图标
+    this.renderFloatingIcons();
   }
 
   // 处理重命名页面

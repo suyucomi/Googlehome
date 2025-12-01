@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeSettings = document.getElementById('closeSettings');
   
   let currentEngine = localStorage.getItem('currentSearchEngine') || 'google';
+  let isInitialLoad = true; // 标记是否为首次加载
 
   // 初始化搜索引擎选项
   if (searchEngineDropdown && searchEngine) {
@@ -56,23 +57,61 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const engine = CONFIG.searchEngines[currentEngine];
     searchInput.placeholder = `在 ${engine.name} 上搜索`;
-    searchEngine.dataset.engine = currentEngine;
     
-    // 直接更新图标，不使用动画类
-    fetch(engine.icon)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Failed to load icon: ${response.status}`);
-        }
-        return response.text();
-      })
-      .then(svgContent => {
-        searchEngine.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
-      })
-      .catch(error => {
-        console.warn(`Failed to load icon for ${engine.name}:`, error);
-        // 使用默认图标或隐藏图标
-      });
+    // 首次加载时不使用动画
+    if (isInitialLoad) {
+      searchEngine.dataset.engine = currentEngine;
+      
+      // 加载图标（无动画）
+      fetch(engine.icon)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load icon: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(svgContent => {
+          searchEngine.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
+          isInitialLoad = false; // 标记初始化完成
+        })
+        .catch(error => {
+          console.warn(`Failed to load icon for ${engine.name}:`, error);
+          isInitialLoad = false;
+        });
+      return;
+    }
+    
+    // 后续切换时使用动画
+    // 添加切换动画类，触发淡出效果
+    searchEngine.classList.add('icon-switching');
+    
+    // 在淡出动画进行到一半时更新图标，实现平滑过渡
+    setTimeout(() => {
+      searchEngine.dataset.engine = currentEngine;
+      
+      // 加载新图标
+      fetch(engine.icon)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load icon: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(svgContent => {
+          // 更新图标
+          searchEngine.style.backgroundImage = `url('data:image/svg+xml;base64,${btoa(svgContent)}')`;
+          
+          // 移除动画类，触发淡入效果
+          requestAnimationFrame(() => {
+            searchEngine.classList.remove('icon-switching');
+          });
+        })
+        .catch(error => {
+          console.warn(`Failed to load icon for ${engine.name}:`, error);
+          // 移除动画类，恢复显示
+          searchEngine.classList.remove('icon-switching');
+        });
+    }, 125); // 淡出动画时间的一半，确保在完全淡出前更新图标
   };
   
   // 切换下拉列表
@@ -241,6 +280,11 @@ class SidebarManager {
         if (this.sidebarTrigger) {
           this.sidebarTrigger.classList.add('show-on-desktop');
         }
+        // 显示悬浮图标
+        const floatingIcons = document.getElementById('floatingPageIcons');
+        if (floatingIcons) {
+          floatingIcons.classList.add('show');
+        }
       } else {
         // 首次访问，默认打开（桌面端）
         this.isOpen = true;
@@ -331,6 +375,12 @@ class SidebarManager {
       this.sidebarTrigger.classList.remove('show-on-desktop');
     }
     
+    // 隐藏悬浮图标
+    const floatingIcons = document.getElementById('floatingPageIcons');
+    if (floatingIcons) {
+      floatingIcons.classList.remove('show');
+    }
+    
     // 显示遮罩层
     if (this.sidebarOverlay) {
       this.sidebarOverlay.classList.add('active');
@@ -376,6 +426,14 @@ class SidebarManager {
     // 显示触发按钮（桌面端）
     if (!this.isMobile && this.sidebarTrigger) {
       this.sidebarTrigger.classList.add('show-on-desktop');
+    }
+    
+    // 显示悬浮图标（桌面端）
+    if (!this.isMobile) {
+      const floatingIcons = document.getElementById('floatingPageIcons');
+      if (floatingIcons) {
+        floatingIcons.classList.add('show');
+      }
     }
     
     // 隐藏遮罩层

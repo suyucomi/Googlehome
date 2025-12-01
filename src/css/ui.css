@@ -1639,9 +1639,25 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background-size: 24px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 图标切换动画状态 - 淡出并缩小 */
+.search-select.icon-switching {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+/* 修复bing图标显示偏移问题 - bing.svg的viewBox是竖长的(678x1024) */
+.search-select[data-engine="bing"] {
+  background-size: 20px 20px;
+  background-position: center center;
 }
 
 /* 搜索框和选择器的悬浮状态 */
@@ -1985,5 +2001,132 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .sidebar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ========== 悬浮页面图标样式 ========== */
+.floating-page-icons {
+  position: fixed;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px;
+  z-index: 98;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 侧边栏收起时显示悬浮图标（通过 JavaScript 控制） */
+.floating-page-icons.show {
+  display: flex;
+}
+
+.floating-page-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(48, 49, 52, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  /* 使用 transform 進行縮放，過渡效果要快，避免延遲 */
+  transition: transform 0.1s ease-out, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; 
+  position: relative;
+  color: #9aa0a6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform-origin: center center; /* 確保從中心縮放 */
+}
+
+.floating-page-icon:hover {
+  background-color: rgba(60, 64, 67, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+  /* 移除 CSS hover scale，由 JS 控制 */
+  color: #e8eaed;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.floating-page-icon.active {
+  background-color: rgba(138, 180, 248, 0.15);
+  border-color: rgba(138, 180, 248, 0.5);
+  color: #8ab4f8;
+  box-shadow: 0 0 15px rgba(138, 180, 248, 0.2);
+}
+
+.floating-page-icon.active::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background-color: #8ab4f8;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(138, 180, 248, 0.6);
+  transition: all 0.2s ease;
+}
+
+.floating-page-icon:hover.active::before {
+  height: 24px;
+}
+
+.floating-page-icon svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease;
+  pointer-events: none; /* 防止圖標干擾鼠標事件 */
+}
+
+.floating-page-icon:hover svg {
+  /* 移除 svg 的 hover scale，避免雙重放大 */
+}
+
+.floating-page-icon .page-tooltip {
+  position: absolute;
+  left: calc(100% + 16px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-10px);
+  background-color: rgba(32, 33, 36, 0.95);
+  backdrop-filter: blur(12px);
+  color: #e8eaed;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.floating-page-icon:hover .page-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.floating-page-icon .page-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: rgba(32, 33, 36, 0.95);
+}
+
+/* 移动端隐藏悬浮图标 */
+@media (max-width: 768px) {
+  .floating-page-icons {
+    display: none !important;
+  }
 }
 
