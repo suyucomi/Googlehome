@@ -1,7 +1,7 @@
 <div align="center">
   <img src="src/assets/images/icon.svg" alt="logo" width="128px"/>
   <h1>Chrome 优雅新标签页</h1>
-  <p>🌟 一个简洁、优雅且功能强大的 Chrome 新标签页扩展 🌟</p>
+  <p>🌟 一个简洁、优雅且强大的新标签页：支持多页面书签、智能搜索、粘贴添加站点、配置备份与恢复等 🌟</p>
   
   <p>Google浏览器主页</p>
 </div>
@@ -19,7 +19,7 @@
 ## 🌈 界面预览
 
 <div align="center">
-  <img src="src\assets\images\主页.PNG" width="800px" alt="主界面"/>
+  <img src="src/assets/images/主页.PNG" width="800px" alt="主界面"/>
   <p align="center">简洁的主界面</p>
 </div>
 
@@ -27,24 +27,27 @@
   <table>
     <tr>
       <td align="center">
-        <img src="src\assets\images\设置.PNG" width="400px"/><br/>
+        <img src="src/assets/images/设置.PNG" width="400px"/><br/>
         <sub>⚙️ 个性化设置</sub>
       </td>
       <td align="center">
-        <img src="src\assets\images\粘贴.PNG" width="400px"/><br/>
+        <img src="src/assets/images/粘贴.PNG" width="400px"/><br/>
         <sub>📋 智能粘贴</sub>
       </td>
     </tr>
   </table>
-</div>>
+</div>
 
 ## ✨ 核心特性
 
-- 🎯 **智能搜索** - 支持多个主流搜索引擎，一键切换
-- 🎨 **个性化背景** - 自定义背景图片，支持模糊与亮度调节
-- 📌 **快捷导航** - 智能网站收藏，自动获取图标
-- 🚀 **流畅体验** - 优雅的动画效果与交互体验
-- 💾 **数据安全** - 支持配置导入导出与数据备份
+- 📚 **多页面书签管理** - 在侧边栏创建、重命名、删除与切换不同书签页，独立管理收藏
+- 🎯 **智能搜索与快捷键** - 下拉选择搜索引擎，支持 `Alt+数字` 快速切换，一键直达
+- 📋 **粘贴即添加** - 在页面直接粘贴网址，自动获取标题与图标，并可编辑名称后保存
+- 🧩 **图标智能获取与缓存** - 多源并发获取站点图标、失败回退与本地缓存，稳定快速显示
+- 🧭 **拖拽排序与交互优化** - 平滑拖拽、悬浮与交换动画，支持批量移动与就地保存
+- 🎨 **个性化背景** - 上传背景图片，实时预览与模糊/亮度调节，动画过渡更顺滑
+- 💾 **配置备份与恢复** - 一键导出/导入包含设置、书签页与书签的数据，便捷迁移
+- 🔒 **Manifest V3 与权限控制** - 合理使用 `storage`、`scripting` 等权限，确保安全与性能
 
 ## 🔍 搜索引擎支持
 
