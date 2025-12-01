@@ -2,10 +2,13 @@
 window.getFavicon = (() => {
   const cache = new Map();
   const pendingRequests = new Map();
+  // 缓存有效期：24小时（毫秒）
+  const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
   
   return async function(url) {
     const domain = new URL(url).hostname;
     
+    // 先检查内存缓存
     if (cache.has(domain)) {
       return cache.get(domain);
     }
@@ -17,10 +20,30 @@ window.getFavicon = (() => {
     
     const request = (async () => {
       try {
-        // 尝试从缓存获取
-        const cachedIcon = localStorage.getItem(`favicon_${domain}`);
-        if (cachedIcon) {
-          return cachedIcon;
+        // 尝试从 localStorage 缓存获取（带时间戳验证）
+        const cacheKey = `favicon_${domain}`;
+        const cachedData = localStorage.getItem(cacheKey);
+        
+        if (cachedData) {
+          try {
+            // 尝试解析为带时间戳的格式
+            const parsed = JSON.parse(cachedData);
+            if (parsed.icon && parsed.timestamp) {
+              // 检查缓存是否过期
+              if (Date.now() - parsed.timestamp < CACHE_EXPIRY) {
+                cache.set(domain, parsed.icon);
+                return parsed.icon;
+              }
+            } else {
+              // 兼容旧格式（直接存储 base64 字符串）
+              cache.set(domain, cachedData);
+              return cachedData;
+            }
+          } catch (e) {
+            // 如果解析失败，可能是旧格式，直接使用
+            cache.set(domain, cachedData);
+            return cachedData;
+          }
         }
 
         // 尝试多个图标服务（按优先级）
@@ -34,31 +57,52 @@ window.getFavicon = (() => {
         // 依次尝试不同的服务
         for (const serviceUrl of iconServices) {
           try {
-            const response = await fetch(serviceUrl);
-            if (response.ok) {
-              const blob = await response.blob();
-              const base64 = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-              });
-              
-              // 缓存图标
-              localStorage.setItem(`favicon_${domain}`, base64);
-              cache.set(domain, base64);
-              return base64;
-            }
+            // 使用 Promise.race 实现超时控制（兼容性更好）
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Request timeout')), 5000);
+            });
+            
+            const fetchPromise = fetch(serviceUrl).then(response => {
+              if (response.ok) {
+                return response.blob();
+              }
+              throw new Error(`HTTP ${response.status}`);
+            });
+            
+            const blob = await Promise.race([fetchPromise, timeoutPromise]);
+            const base64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            
+            // 保存带时间戳的缓存
+            const cacheData = {
+              icon: base64,
+              timestamp: Date.now()
+            };
+            localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+            cache.set(domain, base64);
+            return base64;
           } catch (e) {
             // 继续尝试下一个服务
+            if (e.message !== 'Request timeout') {
+              console.warn(`Failed to fetch icon from ${serviceUrl}:`, e.message || e);
+            }
             continue;
           }
         }
 
         // 如果所有服务都失败，生成默认图标
-        return generateDefaultIcon(domain);
+        const defaultIcon = generateDefaultIcon(domain);
+        // 默认图标也缓存（但标记为默认图标，不设置过期时间）
+        cache.set(domain, defaultIcon);
+        return defaultIcon;
       } catch (e) {
         console.error('Error loading favicon:', e);
-        return generateDefaultIcon(url);
+        const defaultIcon = generateDefaultIcon(url);
+        cache.set(domain, defaultIcon);
+        return defaultIcon;
       } finally {
         pendingRequests.delete(domain);
       }
