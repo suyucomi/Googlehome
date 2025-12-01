@@ -226,13 +226,34 @@ class SidebarManager {
         if (this.container) {
           this.container.classList.add('sidebar-open');
         }
-      } else {
-        // 默认收起
+        // 隐藏触发按钮
+        if (this.sidebarTrigger) {
+          this.sidebarTrigger.classList.remove('show-on-desktop');
+        }
+      } else if (savedState === 'closed') {
+        // 明确设置为关闭状态
         this.isOpen = false;
         this.sidebar.classList.add('collapsed');
         if (this.container) {
           this.container.classList.remove('sidebar-open');
         }
+        // 显示触发按钮
+        if (this.sidebarTrigger) {
+          this.sidebarTrigger.classList.add('show-on-desktop');
+        }
+      } else {
+        // 首次访问，默认打开（桌面端）
+        this.isOpen = true;
+        this.sidebar.classList.remove('collapsed');
+        if (this.container) {
+          this.container.classList.add('sidebar-open');
+        }
+        // 隐藏触发按钮
+        if (this.sidebarTrigger) {
+          this.sidebarTrigger.classList.remove('show-on-desktop');
+        }
+        // 保存初始状态
+        localStorage.setItem(this.storageKey, 'open');
       }
     } else {
       // 移动端默认关闭
@@ -305,6 +326,11 @@ class SidebarManager {
     // 移除收起状态
     this.sidebar.classList.remove('collapsed');
     
+    // 隐藏触发按钮（桌面端）
+    if (!this.isMobile && this.sidebarTrigger) {
+      this.sidebarTrigger.classList.remove('show-on-desktop');
+    }
+    
     // 显示遮罩层
     if (this.sidebarOverlay) {
       this.sidebarOverlay.classList.add('active');
@@ -346,6 +372,11 @@ class SidebarManager {
     
     // 添加收起状态
     this.sidebar.classList.add('collapsed');
+    
+    // 显示触发按钮（桌面端）
+    if (!this.isMobile && this.sidebarTrigger) {
+      this.sidebarTrigger.classList.add('show-on-desktop');
+    }
     
     // 隐藏遮罩层
     if (this.sidebarOverlay) {

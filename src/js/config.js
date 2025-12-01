@@ -9,37 +9,37 @@ const CONFIG = {
     baidu: {
       name: '百度',
       url: 'https://www.baidu.com/s?wd=',
-      icon: '/src/assets/icons/baidu.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/baidu.svg')
     },
     bing: {
       name: '必应',
       url: 'https://www.bing.com/search?q=',
-      icon: '/src/assets/icons/bing.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/bing.svg')
     },
     duckduckgo: {
       name: 'DuckDuckGo',
       url: 'https://duckduckgo.com/?q=',
-      icon: '/src/assets/icons/duckduckgo.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/duckduckgo.svg')
     },
     yahoo: {
       name: 'Yahoo',
       url: 'https://search.yahoo.com/search?p=',
-      icon: '/src/assets/icons/yahoo.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/yahoo.svg')
     },
     ecosia: {
       name: 'Ecosia',
       url: 'https://www.ecosia.org/search?q=',
-      icon: '/src/assets/icons/ecosia.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/ecosia.svg')
     },
     github: {
       name: 'GitHub',
       url: 'https://github.com/search?q=',
-      icon: '/src/assets/icons/github.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/github.svg')
     },
     bilibili: {
       name: '哔哩哔哩',
       url: 'https://search.bilibili.com/all?keyword=',
-      icon: '/src/assets/icons/bilibili.svg'
+      icon: chrome.runtime.getURL('src/assets/icons/bilibili.svg')
     }
   },
 
