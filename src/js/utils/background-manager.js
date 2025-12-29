@@ -1,30 +1,37 @@
 class BackgroundManager {
   constructor() {
-    this.maxFileSize = 5 * 1024 * 1024; // 5MB
-    this.supportedFormats = ['image/jpeg', 'image/png', 'image/webp'];
+    // 使用配置常量
+    this.maxFileSize = CONFIG.security.maxFileSize;
+    this.supportedFormats = CONFIG.security.supportedImageFormats;
+    this.maxWidth = CONFIG.constants.BACKGROUND_MAX_WIDTH;
+    this.maxHeight = CONFIG.constants.BACKGROUND_MAX_HEIGHT;
+    this.quality = CONFIG.constants.BACKGROUND_QUALITY;
+    this.minImageWidth = 800;
+    this.minImageHeight = 600;
   }
 
   // 处理图片上传
   async handleImageUpload(file) {
     console.log('===== 处理图片上传 =====');
     console.log('1. 验证图片');
-    
+
     if (!this.validateImage(file)) {
-      throw new Error('图片格式或大小不符合要求');
+      throw new Error(CONFIG.errorMessages.INVALID_URL || '图片格式或大小不符合要求');
     }
 
     try {
       console.log('2. 开始处理图片');
       ConfigManager.showToast('正在处理图片...', 'info');
-      
+
       console.log('3. 转换图片');
       const processedImage = await this.processImage(file);
-      
+
       console.log('4. 图片处理完成');
       return processedImage;
     } catch (error) {
       console.error('图片处理失败:', error);
-      throw new Error('图片处理失败');
+      // 添加错误恢复机制 - 返回默认背景
+      return this.getFallbackBackground();
     }
   }
 
@@ -36,12 +43,12 @@ class BackgroundManager {
     });
 
     if (file.size > this.maxFileSize) {
-      ConfigManager.showToast('图片大小不能超过5MB', 'error');
+      ConfigManager.showToast(CONFIG.errorMessages.FILE_TOO_LARGE || '图片大小不能超过5MB', 'error');
       return false;
     }
 
     if (!this.supportedFormats.includes(file.type)) {
-      ConfigManager.showToast('仅支持JPG、PNG和WebP格式', 'error');
+      ConfigManager.showToast(CONFIG.errorMessages.UNSUPPORTED_FORMAT || '仅支持JPG、PNG和WebP格式', 'error');
       return false;
     }
 
@@ -64,12 +71,12 @@ class BackgroundManager {
             });
 
             // 检查图片尺寸
-            if (img.width < 800 || img.height < 600) {
-              ConfigManager.showToast('图片尺寸过小，建议使用至少800x600的图片', 'warning');
+            if (img.width < this.minImageWidth || img.height < this.minImageHeight) {
+              ConfigManager.showToast(`图片尺寸过小，建议使用至少${this.minImageWidth}x${this.minImageHeight}的图片`, 'warning');
             }
 
             // 如果图片太大，进行压缩
-            const result = file.size > this.maxFileSize / 2 ? 
+            const result = file.size > this.maxFileSize / 2 ?
               this.compressImage(img) : e.target.result;
 
             resolve(result);
@@ -84,18 +91,18 @@ class BackgroundManager {
     });
   }
 
-  // 压缩图片
+  // 压缩图片 - 优化压缩算法
   compressImage(img) {
     console.log('压缩图片');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
-    // 计算新尺寸
+
+    // 计算新尺寸 - 使用配置常量
     const { width, height } = this.calculateAspectRatioFit(
-      img.width, 
-      img.height, 
-      1920, // 最大宽度
-      1080  // 最大高度
+      img.width,
+      img.height,
+      this.maxWidth,
+      this.maxHeight
     );
 
     canvas.width = width;
@@ -104,12 +111,19 @@ class BackgroundManager {
     // 使用高质量缩放
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    
+
     // 绘制图片
     ctx.drawImage(img, 0, 0, width, height);
 
     console.log('压缩后尺寸:', { width, height });
-    return canvas.toDataURL('image/jpeg', 0.85);
+    // 使用配置的质量参数
+    return canvas.toDataURL('image/jpeg', this.quality);
+  }
+
+  // 获取备用背景
+  getFallbackBackground() {
+    // 返回默认渐变背景
+    return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
   }
 
   // 计算宽高比

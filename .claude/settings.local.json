@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__vibium__browser_screenshot",
+      "mcp__vibium__browser_find",
+      "mcp__vibium__browser_type",
+      "mcp__vibium__browser_click"
+    ]
+  }
+}

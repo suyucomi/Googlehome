@@ -1,3 +1,14 @@
+// HTML 转义工具函数，防止 XSS 攻击
+function escapeHtml(unsafe) {
+  if (typeof unsafe !== 'string') return unsafe;
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // 书签页面管理器
 class PageManager {
   constructor() {
@@ -9,7 +20,7 @@ class PageManager {
       document.addEventListener('DOMContentLoaded', () => this.init());
     } else {
       // 如果DOM已加载，延迟一点确保其他脚本已加载
-      setTimeout(() => this.init(), 100);
+      setTimeout(() => this.init(), CONFIG.constants.DELAY_MEDIUM);
     }
   }
 
@@ -196,11 +207,17 @@ class PageManager {
   async renderBookmarks(squares, container, skipAnimation = false) {
     const fragment = document.createDocumentFragment();
     const faviconPromises = [];
-    
+
+    // 添加容器的 ARIA 角色
+    container.setAttribute('role', 'list');
+    container.setAttribute('aria-label', '书签列表');
+
     for (let i = 0; i < squares.length; i++) {
       const squareData = squares[i];
       const listItem = document.createElement('div');
       listItem.className = 'square-list-item';
+      // 添加 ARIA 标签
+      listItem.setAttribute('role', 'listitem');
       
       // 如果不是首次加载，添加淡入动画（慢慢浮现）
       if (!skipAnimation) {
@@ -216,6 +233,10 @@ class PageManager {
       square.className = 'square-container';
       square.dataset.url = squareData.url;
       square.dataset.title = squareData.title;
+      // 添加 ARIA 标签和可访问性支持
+      square.setAttribute('role', 'link');
+      square.setAttribute('tabindex', '0');
+      square.setAttribute('aria-label', `${squareData.title} - ${squareData.url}`);
       
       const titleSpan = document.createElement('span');
       titleSpan.className = 'square-title';
@@ -268,6 +289,14 @@ class PageManager {
       
       square.addEventListener('click', function() {
         window.location.href = this.dataset.url;
+      });
+
+      // 添加键盘导航支持
+      square.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          window.location.href = this.dataset.url;
+        }
       });
       
       square.addEventListener('contextmenu', function(e) {
@@ -333,21 +362,57 @@ class PageManager {
       const icon = document.createElement('div');
       icon.className = 'floating-page-icon';
       icon.dataset.pageId = page.id;
-      
+      // 添加 ARIA 标签和可访问性支持
+      icon.setAttribute('role', 'button');
+      icon.setAttribute('tabindex', '0');
+      icon.setAttribute('aria-label', `${page.name} - ${page.id === this.currentPageId ? '当前页面' : '切换到此页面'}`);
+      icon.setAttribute('aria-current', page.id === this.currentPageId ? 'page' : 'false');
+
       if (page.id === this.currentPageId) {
         icon.classList.add('active');
       }
-      
-      icon.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div class="page-tooltip">${page.name}</div>
-      `;
-      
+
+      // 使用安全的 DOM 方法，防止 XSS 攻击
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('aria-hidden', 'true'); // SVG 图标对屏幕阅读器隐藏
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+
+      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path1.setAttribute('d', 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20');
+      path1.setAttribute('stroke', 'currentColor');
+      path1.setAttribute('stroke-width', '2');
+      path1.setAttribute('stroke-linecap', 'round');
+      path1.setAttribute('stroke-linejoin', 'round');
+
+      const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path2.setAttribute('d', 'M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z');
+      path2.setAttribute('stroke', 'currentColor');
+      path2.setAttribute('stroke-width', '2');
+      path2.setAttribute('stroke-linecap', 'round');
+      path2.setAttribute('stroke-linejoin', 'round');
+
+      svg.appendChild(path1);
+      svg.appendChild(path2);
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'page-tooltip';
+      tooltip.textContent = page.name; // 使用 textContent 防止 XSS
+
+      icon.appendChild(svg);
+      icon.appendChild(tooltip);
+
+      // 添加点击事件和键盘事件支持
       icon.addEventListener('click', () => {
         this.switchPage(page.id);
+      });
+
+      // 添加键盘导航支持
+      icon.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.switchPage(page.id);
+        }
       });
       
       container.appendChild(icon);
@@ -358,41 +423,119 @@ class PageManager {
   renderPages() {
     const container = document.getElementById('bookmarkPages');
     if (!container) return;
-    
+
     container.innerHTML = '';
+    // 添加 ARIA 角色标记
+    container.setAttribute('role', 'listbox');
+    container.setAttribute('aria-label', '书签页面列表');
     
     this.pages.forEach(page => {
       const item = document.createElement('div');
       item.className = 'bookmark-page-item';
+      // 添加 ARIA 标签
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', page.id === this.currentPageId ? 'true' : 'false');
+      item.setAttribute('aria-label', `${page.name} - ${page.bookmarkCount} 个书签`);
+
       if (page.id === this.currentPageId) {
         item.classList.add('active');
       }
       
-      item.innerHTML = `
-        <div class="page-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="page-info">
-          <div class="page-name">${page.name}</div>
-          <div class="page-count">${page.bookmarkCount} 个书签</div>
-        </div>
-        <div class="page-actions">
-          <button class="page-action-btn edit-page-btn" data-page-id="${page.id}" title="重命名">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-          <button class="page-action-btn delete-page-btn" data-page-id="${page.id}" title="删除">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-        </div>
-      `;
+      // 使用安全的 DOM 方法，防止 XSS 攻击
+      const pageIcon = document.createElement('div');
+      pageIcon.className = 'page-icon';
+
+      const pageIconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      pageIconSvg.setAttribute('viewBox', '0 0 24 24');
+      pageIconSvg.setAttribute('fill', 'none');
+
+      const pageIconPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pageIconPath1.setAttribute('d', 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20');
+      pageIconPath1.setAttribute('stroke', 'currentColor');
+      pageIconPath1.setAttribute('stroke-width', '2');
+      pageIconPath1.setAttribute('stroke-linecap', 'round');
+      pageIconPath1.setAttribute('stroke-linejoin', 'round');
+
+      const pageIconPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pageIconPath2.setAttribute('d', 'M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z');
+      pageIconPath2.setAttribute('stroke', 'currentColor');
+      pageIconPath2.setAttribute('stroke-width', '2');
+      pageIconPath2.setAttribute('stroke-linecap', 'round');
+      pageIconPath2.setAttribute('stroke-linejoin', 'round');
+
+      pageIconSvg.appendChild(pageIconPath1);
+      pageIconSvg.appendChild(pageIconPath2);
+      pageIcon.appendChild(pageIconSvg);
+
+      const pageInfo = document.createElement('div');
+      pageInfo.className = 'page-info';
+
+      const pageName = document.createElement('div');
+      pageName.className = 'page-name';
+      pageName.textContent = page.name; // 使用 textContent 防止 XSS
+
+      const pageCount = document.createElement('div');
+      pageCount.className = 'page-count';
+      pageCount.textContent = `${page.bookmarkCount} 个书签`;
+
+      pageInfo.appendChild(pageName);
+      pageInfo.appendChild(pageCount);
+
+      const pageActions = document.createElement('div');
+      pageActions.className = 'page-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'page-action-btn edit-page-btn';
+      editBtn.dataset.pageId = page.id;
+      editBtn.title = '重命名';
+      // 添加 ARIA 标签
+      editBtn.setAttribute('aria-label', `重命名页面: ${page.name}`);
+      editBtn.setAttribute('type', 'button');
+
+      const editBtnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      editBtnSvg.setAttribute('viewBox', '0 0 24 24');
+      editBtnSvg.setAttribute('fill', 'none');
+
+      const editBtnPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      editBtnPath1.setAttribute('d', 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7');
+      editBtnPath1.setAttribute('stroke', 'currentColor');
+      editBtnPath1.setAttribute('stroke-width', '2');
+
+      const editBtnPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      editBtnPath2.setAttribute('d', 'M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z');
+      editBtnPath2.setAttribute('stroke', 'currentColor');
+      editBtnPath2.setAttribute('stroke-width', '2');
+
+      editBtnSvg.appendChild(editBtnPath1);
+      editBtnSvg.appendChild(editBtnPath2);
+      editBtn.appendChild(editBtnSvg);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'page-action-btn delete-page-btn';
+      deleteBtn.dataset.pageId = page.id;
+      deleteBtn.title = '删除';
+      // 添加 ARIA 标签
+      deleteBtn.setAttribute('aria-label', `删除页面: ${page.name}`);
+      deleteBtn.setAttribute('type', 'button');
+
+      const deleteBtnSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      deleteBtnSvg.setAttribute('viewBox', '0 0 24 24');
+      deleteBtnSvg.setAttribute('fill', 'none');
+
+      const deleteBtnPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      deleteBtnPath.setAttribute('d', 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2');
+      deleteBtnPath.setAttribute('stroke', 'currentColor');
+      deleteBtnPath.setAttribute('stroke-width', '2');
+
+      deleteBtnSvg.appendChild(deleteBtnPath);
+      deleteBtn.appendChild(deleteBtnSvg);
+
+      pageActions.appendChild(editBtn);
+      pageActions.appendChild(deleteBtn);
+
+      item.appendChild(pageIcon);
+      item.appendChild(pageInfo);
+      item.appendChild(pageActions);
       
       // 点击切换页面
       item.addEventListener('click', (e) => {
@@ -402,14 +545,12 @@ class PageManager {
       });
       
       // 重命名按钮
-      const editBtn = item.querySelector('.edit-page-btn');
       editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.handleRenamePage(page.id, page.name);
       });
-      
+
       // 删除按钮
-      const deleteBtn = item.querySelector('.delete-page-btn');
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.deletePage(page.id);

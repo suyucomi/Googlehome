@@ -1,7 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="个人书签管理主页">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta name="referrer" content="no-referrer">
   <title>Home</title>
   <!-- 只保留主样式表 -->
   <link rel="stylesheet" href="css/ui.css">
@@ -9,18 +14,18 @@
 <body>
   <div class="container">
     <!-- 侧边栏触发按钮（移动端显示） -->
-    <button class="sidebar-trigger" id="sidebarTrigger" title="打开侧边栏">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <button class="sidebar-trigger" id="sidebarTrigger" title="打开侧边栏" aria-label="打开侧边栏" aria-expanded="false" aria-controls="sidebar">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    
+
     <!-- 侧边栏 -->
-    <div class="sidebar collapsed" id="sidebar">
+    <div class="sidebar collapsed" id="sidebar" role="navigation" aria-label="书签页面侧边栏">
       <div class="sidebar-header">
         <h3>书签页面</h3>
-        <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开" aria-label="收起侧边栏" aria-expanded="true" aria-controls="sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -58,11 +63,11 @@
     <div class="floating-page-icons" id="floatingPageIcons"></div>
     
     <!-- 设置面板 -->
-    <div class="settings-panel" id="settingsPanel">
+    <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="设置面板" aria-modal="true" aria-hidden="true">
       <div class="settings-header">
-        <h2>设置</h2>
-        <button class="close-button" id="closeSettings">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <h2 id="settingsTitle">设置</h2>
+        <button class="close-button" id="closeSettings" aria-label="关闭设置" aria-controls="settingsPanel">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
@@ -117,16 +122,16 @@
     <div class="preview-overlay" id="previewOverlay"></div>
     
     <!-- 搜索框区域 - 移到顶部 -->
-    <div class="search-container">
+    <div class="search-container" role="search">
       <div class="search-box-wrapper">
         <!-- 搜索引擎选择器 -->
         <div class="search-select-container">
-          <button class="search-select" id="searchEngine" title="选择搜索引擎"></button>
-          <div class="search-select-dropdown" id="searchEngineDropdown"></div>
+          <button class="search-select" id="searchEngine" title="选择搜索引擎" aria-label="选择搜索引擎" aria-haspopup="listbox" aria-expanded="false" aria-controls="searchEngineDropdown"></button>
+          <div class="search-select-dropdown" id="searchEngineDropdown" role="listbox" aria-label="搜索引擎列表"></div>
         </div>
         <!-- 搜索输入框 -->
         <div class="search-box">
-          <input type="text" id="searchInput" name="searchInput" autocomplete="off">
+          <input type="text" id="searchInput" name="searchInput" autocomplete="off" aria-label="在搜索引擎上搜索" placeholder="">
         </div>
       </div>
     </div>

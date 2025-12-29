@@ -4,15 +4,10 @@ let isSaving = false;
 let draggedItem = null;
 
 
-// 优化保存操作
+// 优化保存操作 - 使用配置常量
 const throttledSave = throttle(() => {
   saveData();
-}, 1000);
-
-// 优化搜索操作（如果需要的话，可以在这里添加搜索功能）
-// const debouncedSearch = debounce((value) => {
-//   performSearch(value);
-// }, 300);
+}, CONFIG.constants.THROTTLE_SAVE);
 
 // 将函数暴露到全局
 window.saveData = async function() {
@@ -88,8 +83,8 @@ async function processSaveQueue() {
     console.error('保存数据失败:', error);
     // 添加错误重试逻辑
   }
-  
-  setTimeout(processSaveQueue, 1000);
+
+  setTimeout(processSaveQueue, CONFIG.constants.THROTTLE_SAVE);
 }
 
 // 添加拖拽事件处理（暴露到全局）
@@ -108,7 +103,7 @@ window.addDragEvents = function(listItem) {
     dragImage.style.left = '-9999px';
     dragImage.classList.add('drag-image');
     document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 28, 28); // 设置鼠标位置在图标中心
+    e.dataTransfer.setDragImage(dragImage, CONFIG.constants.DRAG_IMAGE_SIZE, CONFIG.constants.DRAG_IMAGE_SIZE); // 设置鼠标位置在图标中心
     
     setTimeout(() => {
       document.body.removeChild(dragImage);
@@ -368,21 +363,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
 });
 
+// 追踪当前菜单关闭处理器，防止内存泄漏
+let currentMenuAbortController = null;
+
 // 修改右键菜单函数
 window.createContextMenu = function(x, y, square) {
-  // 移除已存在的菜单
+  // 清理之前的菜单和事件监听器
   const existingMenu = document.querySelector('.context-menu');
   if (existingMenu) {
     existingMenu.remove();
   }
+  if (currentMenuAbortController) {
+    currentMenuAbortController.abort();
+  }
+
+  // 创建新的 AbortController 用于追踪事件监听器
+  currentMenuAbortController = new AbortController();
+  const signal = currentMenuAbortController.signal;
 
   const menu = document.createElement('div');
   menu.className = 'context-menu';
-  
+
   document.body.appendChild(menu);
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
-  
+
   // 修改选项
   const editItem = document.createElement('div');
   editItem.className = 'context-menu-item';
@@ -391,10 +396,10 @@ window.createContextMenu = function(x, y, square) {
     menu.remove();
     const url = square.dataset.url;
     const name = square.dataset.title;
-    
+
     // 使用与粘贴相同的弹窗
     const confirmed = await window.createNameDialog(url, name);
-    
+
     if (confirmed) {
       square.dataset.title = confirmed.name;
       const titleSpan = square.parentNode.querySelector('.square-title');
@@ -410,12 +415,12 @@ window.createContextMenu = function(x, y, square) {
   deleteItem.onclick = () => {
     menu.remove();
     const listItem = square.parentNode;
-    
+
     // 添加消失动画
     listItem.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease';
     listItem.style.transform = 'scale(0.8) translateY(10px)';
     listItem.style.opacity = '0';
-    
+
     // 等待动画完成后再移除元素
     setTimeout(() => {
       listItem.remove();
@@ -438,18 +443,15 @@ window.createContextMenu = function(x, y, square) {
     menu.style.top = `${windowHeight - menuRect.height - 5}px`;
   }
 
-  // 点击其他地方关闭菜单
+  // 点击其他地方关闭菜单 - 使用 AbortController 防止内存泄漏
   const closeMenu = (e) => {
     if (!menu.contains(e.target)) {
       menu.remove();
-      document.removeEventListener('click', closeMenu);
-      document.removeEventListener('contextmenu', closeMenu);
+      // 事件会通过 AbortController 自动清理
     }
   };
-  
-  // 延迟添加事件监听，避免立即触发
-  setTimeout(() => {
-    document.addEventListener('click', closeMenu);
-    document.addEventListener('contextmenu', closeMenu);
-  }, 0);
+
+  // 使用 signal 参数添加事件监听，确保可以自动清理
+  document.addEventListener('click', closeMenu, { signal, capture: true });
+  document.addEventListener('contextmenu', closeMenu, { signal, capture: true });
 }; 

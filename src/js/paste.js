@@ -35,13 +35,151 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // 如果没有预定义标题，返回名
-      return hostname;
+      // 尝试从公共 API 获取网站标题
+      try {
+        // 使用多种 API 依次尝试
+        const titleApis = [
+          // 方法1: 使用 textise dot iitty（尝试获取页面文本）
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+          // 方法2: 使用 corsproxy
+          `https://corsproxy.io/?${encodeURIComponent(url)}`
+        ];
+
+        for (const apiUrl of titleApis) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(apiUrl, {
+              signal: controller.signal,
+              headers: {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+              }
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+              const text = await response.text();
+              // 尝试从 HTML 中提取 title
+              const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+              if (titleMatch && titleMatch[1]) {
+                const extractedTitle = titleMatch[1].trim();
+                // 清理标题（移除常见的后缀）
+                const cleanTitle = extractedTitle
+                  .replace(/[\s-_|]+登录[\s-_|]*$/i, '')
+                  .replace(/[\s-_|]*登录[\s-_|]*/i, '')
+                  .replace(/ - .*/, '')
+                  .replace(/ \| .*/, '')
+                  .replace(/ @ .*/, '')
+                  .trim();
+                if (cleanTitle && cleanTitle.length > 0 && cleanTitle.length < 100) {
+                  console.log(`✓ Fetched title for ${hostname}: ${cleanTitle}`);
+                  return cleanTitle;
+                }
+              }
+            }
+          } catch (e) {
+            // 继续尝试下一个 API
+            continue;
+          }
+        }
+      } catch (e) {
+        // API 调用失败，继续使用默认方法
+        console.warn('Failed to fetch title from APIs:', e);
+      }
+
+      // 如果无法获取真实标题，使用域名生成友好的标题
+      return generateFriendlyTitle(hostname);
     } catch (e) {
       console.error('Error processing URL:', e);
-      const urlObj = new URL(url);
-      return urlObj.hostname.replace('www.', '');
+      try {
+        const urlObj = new URL(url);
+        return generateFriendlyTitle(urlObj.hostname.replace('www.', ''));
+      } catch (e2) {
+        return '网站';
+      }
     }
+  }
+
+  // 从域名生成友好的标题
+  function generateFriendlyTitle(hostname) {
+    // 移除端口号和路径
+    const domain = hostname.split(':')[0].split('/')[0];
+
+    // 常见的域名前缀和后缀映射
+    const prefixes = {
+      'blog': '博客',
+      'news': '新闻',
+      'mail': '邮箱',
+      'docs': '文档',
+      'help': '帮助',
+      'api': 'API',
+      'dev': '开发',
+      'test': '测试',
+      'app': '应用',
+      'm': '手机',
+      'mobile': '手机'
+    };
+
+    const suffixes = {
+      'com': '',
+      'cn': '中国',
+      'net': '网络',
+      'org': '组织',
+      'io': '',
+      'co': '',
+      'app': '',
+      'dev': '',
+      'tech': '科技',
+      'edu': '教育'
+    };
+
+    // 分割域名的各个部分
+    const parts = domain.split('.');
+
+    // 处理类似 "github.com" 的情况
+    let mainPart = parts[0];
+    let suffix = parts.length > 1 ? parts[parts.length - 1] : '';
+
+    // 检查是否有前缀需要移除
+    for (const [key, value] of Object.entries(prefixes)) {
+      if (mainPart === key) {
+        // 如果有第二部分，使用第二部分
+        if (parts.length > 2) {
+          mainPart = parts[1];
+        } else {
+          mainPart = '';
+        }
+        break;
+      }
+    }
+
+    // 生成标题
+    let title = '';
+
+    if (mainPart) {
+      // 将域名转换为标题格式（首字母大写，处理连字符）
+      title = mainPart
+        .split(/[-_]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      // 添加后缀说明
+      if (suffixes[suffix]) {
+        title += suffixes[suffix];
+      }
+    } else {
+      // 使用完整域名
+      title = domain
+        .split('.')
+        .slice(0, -1)
+        .join('.')
+        .split(/[-_]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    }
+
+    return title || domain;
   }
 
   // 将 createNameDialog 函数移到全局作用域
@@ -82,15 +220,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'name-input';
-    input.placeholder = '输入网站名称';
-    
-    // 如果有初始名称就使用它，否则获取网站标题
+    input.placeholder = '正在获取网站名称...';
+
+    // 如果有初始名称就使用它，否则异步获取网站标题
     if (initialName) {
       input.value = initialName;
+      input.select(); // 自动选中，方便用户修改
     } else {
-      // 异步获取标题
+      // 立即显示域名作为临时标题
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname.replace('www.', '');
+      input.value = generateFriendlyTitle(hostname);
+      input.select(); // 自动选中
+
+      // 异步获取更准确的标题
       getWebsiteTitle(url).then(title => {
-        input.value = title;
+        if (title && title !== input.value) {
+          input.value = title;
+          input.select(); // 更新后重新选中
+        }
+        input.placeholder = '输入网站名称';
+      }).catch(err => {
+        input.placeholder = '输入网站名称';
       });
     }
     
@@ -214,11 +365,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 300);
   };
 
-  // 添加 URL 验证
+  // 添加 URL 验证 - 阻止 javascript: 协议和其他危险协议
   function isValidUrl(url) {
+    if (typeof url !== 'string') return false;
+
+    // 使用配置中的危险协议列表
+    const lowerUrl = url.toLowerCase().trim();
+    for (const protocol of CONFIG.security.dangerousProtocols) {
+      if (lowerUrl.startsWith(protocol)) {
+        return false;
+      }
+    }
+
     try {
       const urlObj = new URL(url);
-      return ['http:', 'https:'].includes(urlObj.protocol);
+      // 使用配置中的允许协议列表
+      return CONFIG.security.allowedProtocols.includes(urlObj.protocol);
     } catch (e) {
       return false;
     }

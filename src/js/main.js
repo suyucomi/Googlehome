@@ -247,8 +247,8 @@ class SidebarManager {
     this.isAnimating = false;
     this.storageKey = 'sidebarState';
     
-    // 响应式断点
-    this.isMobile = window.innerWidth <= 768;
+    // 响应式断点 - 使用配置常量
+    this.isMobile = window.innerWidth <= CONFIG.constants.MOBILE_BREAKPOINT;
     
     if (!this.sidebar || !this.sidebarToggle) return;
     
@@ -475,7 +475,7 @@ class SidebarManager {
   // 处理窗口大小变化
   handleResize() {
     const wasMobile = this.isMobile;
-    this.isMobile = window.innerWidth <= 768;
+    this.isMobile = window.innerWidth <= CONFIG.constants.MOBILE_BREAKPOINT;
     
     // 从移动端切换到桌面端
     if (wasMobile && !this.isMobile) {

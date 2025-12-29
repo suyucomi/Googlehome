@@ -4,33 +4,38 @@ window.getFavicon = (() => {
   const pendingRequests = new Map();
   // 缓存有效期：24小时（毫秒）
   const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
-  
+  // 默认图标缓存时间：1小时（之后会重试获取真实图标）
+  const DEFAULT_ICON_CACHE_EXPIRY = 60 * 60 * 1000;
+
   return async function(url) {
     const domain = new URL(url).hostname;
-    
+
     // 先检查内存缓存
     if (cache.has(domain)) {
       return cache.get(domain);
     }
-    
+
     // 防止重复请求
     if (pendingRequests.has(domain)) {
       return pendingRequests.get(domain);
     }
-    
+
     const request = (async () => {
       try {
         // 尝试从 localStorage 缓存获取（带时间戳验证）
         const cacheKey = `favicon_${domain}`;
         const cachedData = localStorage.getItem(cacheKey);
-        
+
         if (cachedData) {
           try {
             // 尝试解析为带时间戳的格式
             const parsed = JSON.parse(cachedData);
             if (parsed.icon && parsed.timestamp) {
+              const isDefault = parsed.isDefault || false;
+              const expiry = isDefault ? DEFAULT_ICON_CACHE_EXPIRY : CACHE_EXPIRY;
+
               // 检查缓存是否过期
-              if (Date.now() - parsed.timestamp < CACHE_EXPIRY) {
+              if (Date.now() - parsed.timestamp < expiry) {
                 cache.set(domain, parsed.icon);
                 return parsed.icon;
               }
@@ -46,68 +51,109 @@ window.getFavicon = (() => {
           }
         }
 
-        // 尝试多个图标服务（按优先级）
+        // 尝试多个图标服务（按优先级和稳定性排序）
         const iconServices = [
-          `https://icon.horse/icon/${domain}`,
-          `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
-          `https://favicon.yandex.net/favicon/${domain}`,
-          `https://api.faviconkit.com/${domain}/64`
+          // Google 服务最稳定，优先使用
+          {
+            url: `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
+            timeout: 3000,
+            name: 'Google'
+          },
+          // DuckDuckGo 服务
+          {
+            url: `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+            timeout: 3000,
+            name: 'DuckDuckGo'
+          },
+          // Icon Horse 服务
+          {
+            url: `https://icon.horse/icon/${domain}`,
+            timeout: 5000,
+            name: 'IconHorse'
+          },
+          // Yandex 服务
+          {
+            url: `https://favicon.yandex.net/favicon/${domain}`,
+            timeout: 4000,
+            name: 'Yandex'
+          },
+          // Favicon Kit 备用
+          {
+            url: `https://api.faviconkit.com/${domain}/64`,
+            timeout: 3000,
+            name: 'FaviconKit'
+          }
         ];
 
         // 依次尝试不同的服务
-        for (const serviceUrl of iconServices) {
+        for (const service of iconServices) {
           try {
-            // 使用 Promise.race 实现超时控制（兼容性更好）
             const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Request timeout')), 5000);
+              setTimeout(() => reject(new Error('Request timeout')), service.timeout);
             });
-            
-            const fetchPromise = fetch(serviceUrl).then(response => {
+
+            const fetchPromise = fetch(service.url).then(response => {
               if (response.ok) {
                 return response.blob();
               }
               throw new Error(`HTTP ${response.status}`);
             });
-            
+
             const blob = await Promise.race([fetchPromise, timeoutPromise]);
-            const base64 = await new Promise((resolve) => {
+
+            // 验证获取的是有效图片
+            if (blob.size < 100) {
+              throw new Error('Invalid icon size');
+            }
+
+            const base64 = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onloadend = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error('Failed to convert to base64'));
               reader.readAsDataURL(blob);
             });
-            
-            // 保存带时间戳的缓存
+
+            // 保存带时间戳的缓存（标记为真实图标）
             const cacheData = {
               icon: base64,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              isDefault: false
             };
             localStorage.setItem(cacheKey, JSON.stringify(cacheData));
             cache.set(domain, base64);
+
+            console.log(`✓ Favicon loaded for ${domain} from ${service.name}`);
             return base64;
           } catch (e) {
             // 继续尝试下一个服务
             if (e.message !== 'Request timeout') {
-              console.warn(`Failed to fetch icon from ${serviceUrl}:`, e.message || e);
+              console.warn(`✗ Failed to fetch icon from ${service.name}:`, e.message || e);
             }
             continue;
           }
         }
 
-        // 如果所有服务都失败，生成默认图标
+        // 如果所有服务都失败，生成默认图标（短期缓存）
+        console.warn(`⚠ Using default icon for ${domain}`);
         const defaultIcon = generateDefaultIcon(domain);
-        // 默认图标也缓存（但标记为默认图标，不设置过期时间）
+        const cacheData = {
+          icon: defaultIcon,
+          timestamp: Date.now(),
+          isDefault: true
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
         cache.set(domain, defaultIcon);
         return defaultIcon;
       } catch (e) {
         console.error('Error loading favicon:', e);
-        const defaultIcon = generateDefaultIcon(url);
+        const defaultIcon = generateDefaultIcon(domain);
         cache.set(domain, defaultIcon);
         return defaultIcon;
       } finally {
         pendingRequests.delete(domain);
       }
     })();
-    
+
     pendingRequests.set(domain, request);
     return request;
   };
