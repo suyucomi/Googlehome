@@ -162,7 +162,7 @@ window.getFavicon = (() => {
 // 生成默认图标
 function generateDefaultIcon(url) {
   try {
-    const domain = new URL(url).hostname;
+    const domain = url.includes('://') ? new URL(url).hostname : url;
     const letter = domain.charAt(0).toUpperCase();
     const color = stringToColor(domain);
     
