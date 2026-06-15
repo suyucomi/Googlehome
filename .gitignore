@@ -1,0 +1,58 @@
+# ===== 敏感信息 & 密钥 =====
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials*
+secrets*
+*secret*
+*password*
+*api_key*
+*apikey*
+*token*
+.config
+
+# 本地覆盖配置
+config.local.*
+settings.local.*
+*.local.json
+
+# ===== AI 工具个人文件 =====
+.hermes/
+.claude/
+.trae/
+.cursor/
+.windsurf/
+.copilot/
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ===== IDE & 编辑器 =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 依赖 & 构建 =====
+node_modules/
+dist/
+build/
+.cache/
