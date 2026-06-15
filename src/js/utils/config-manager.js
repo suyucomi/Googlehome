@@ -13,7 +13,22 @@ class ConfigManager {
   
   static async exportConfig() {
     try {
-      const currentEngine = localStorage.getItem('currentSearchEngine');
+      let currentEngine = null;
+
+      if (window.chrome && chrome.storage && chrome.storage.local) {
+        try {
+          const engineResult = await chrome.storage.local.get('searchEngine');
+          if (engineResult.searchEngine) {
+            currentEngine = engineResult.searchEngine;
+          }
+        } catch (e) {}
+      }
+
+      if (!currentEngine) {
+        try {
+          currentEngine = localStorage.getItem('currentSearchEngine');
+        } catch (e) {}
+      }
 
       let settings = { settings: {} };
       let legacySquares = { squares: [] };

@@ -419,6 +419,9 @@ document.addEventListener('DOMContentLoaded', function() {
       square.className = 'square-container';
       square.dataset.url = confirmed.url;
       square.dataset.title = confirmed.name;
+      square.setAttribute('role', 'link');
+      square.setAttribute('tabindex', '0');
+      square.setAttribute('aria-label', `${confirmed.name} - ${confirmed.url}`);
       
       // 创建标题元素
       const titleSpan = document.createElement('span');
@@ -437,6 +440,13 @@ document.addEventListener('DOMContentLoaded', function() {
       square.addEventListener('click', function() {
         window.location.href = this.dataset.url;
       });
+
+      square.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          window.location.href = this.dataset.url;
+        }
+      });
       
       // 添加右键菜单事件
       square.addEventListener('contextmenu', function(e) {
@@ -447,6 +457,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // 组装列表项
       listItem.appendChild(square);
       listItem.appendChild(titleSpan);
+
+      if (typeof window.addDragEvents === 'function') {
+        window.addDragEvents(listItem);
+      }
       
       // 添加到容器
       container.appendChild(listItem);

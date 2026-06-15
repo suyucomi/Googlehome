@@ -6,8 +6,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsPanel = document.getElementById('settingsPanel');
   const closeSettings = document.getElementById('closeSettings');
   
-  let currentEngine = localStorage.getItem('currentSearchEngine') || 'google';
+  let currentEngine = 'google';
   let isInitialLoad = true; // 标记是否为首次加载
+
+  const persistSearchEngine = async (engineKey) => {
+    if (!engineKey) return;
+
+    currentEngine = engineKey;
+
+    try {
+      localStorage.setItem('currentSearchEngine', currentEngine);
+    } catch (error) {
+      console.warn('Failed to persist search engine in localStorage:', error);
+    }
+
+    if (window.chrome && chrome.storage && chrome.storage.local) {
+      try {
+        await chrome.storage.local.set({ searchEngine: currentEngine });
+      } catch (error) {
+        console.warn('Failed to persist search engine in chrome.storage.local:', error);
+      }
+    }
+  };
+
+  const loadInitialSearchEngine = async () => {
+    let storedEngine = null;
+
+    if (window.chrome && chrome.storage && chrome.storage.local) {
+      try {
+        const result = await chrome.storage.local.get('searchEngine');
+        if (result.searchEngine && CONFIG.searchEngines[result.searchEngine]) {
+          storedEngine = result.searchEngine;
+        }
+      } catch (error) {
+        console.warn('Failed to load search engine from chrome.storage.local:', error);
+      }
+    }
+
+    if (!storedEngine) {
+      try {
+        const localEngine = localStorage.getItem('currentSearchEngine');
+        if (localEngine && CONFIG.searchEngines[localEngine]) {
+          storedEngine = localEngine;
+        }
+      } catch (error) {
+        console.warn('Failed to load search engine from localStorage:', error);
+      }
+    }
+
+    currentEngine = storedEngine || 'google';
+    await persistSearchEngine(currentEngine);
+  };
 
   // 初始化搜索引擎选项
   if (searchEngineDropdown && searchEngine) {
@@ -42,11 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
       option.appendChild(text);
       searchEngineDropdown.appendChild(option);
       
-      option.addEventListener('click', () => {
-        currentEngine = key;
+      option.addEventListener('click', async () => {
+        await persistSearchEngine(key);
         updateSearchEngine();
         searchSelectContainer?.classList.remove('active');
-        localStorage.setItem('currentSearchEngine', currentEngine);
       });
     });
   }
@@ -130,7 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // 初始化
-  updateSearchEngine();
+  loadInitialSearchEngine().then(() => {
+    updateSearchEngine();
+  }).catch(error => {
+    console.warn('Failed to initialize search engine state:', error);
+    updateSearchEngine();
+  });
   
   // 处理搜索
   searchInput?.addEventListener('keypress', (e) => {
@@ -172,9 +225,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const index = parseInt(e.key) - 1;
       const engines = Object.keys(CONFIG.searchEngines);
       if (index >= 0 && index < engines.length) {
-        currentEngine = engines[index];
-        updateSearchEngine();
-        searchInput?.focus();
+        persistSearchEngine(engines[index]).then(() => {
+          updateSearchEngine();
+          searchInput?.focus();
+        });
       }
     }
   });

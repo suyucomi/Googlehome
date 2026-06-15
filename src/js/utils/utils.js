@@ -224,26 +224,52 @@ window.debounce = function(func, wait) {
   };
 };
 
-// 优化全局错误处理
+// 安全全局错误处理（内联实现，不依赖外部函数）
 window.addEventListener('error', function(e) {
-  // 添加错误分类处理
-  const errorTypes = {
-    NETWORK_ERROR: 'NetworkError',
-    STORAGE_ERROR: 'StorageError',
-    RUNTIME_ERROR: 'RuntimeError'
-  };
-  
-  const errorHandler = {
-    [errorTypes.NETWORK_ERROR]: handleNetworkError,
-    [errorTypes.STORAGE_ERROR]: handleStorageError,
-    [errorTypes.RUNTIME_ERROR]: handleRuntimeError
-  };
-  
-  const errorType = determineErrorType(e.error);
-  if (errorHandler[errorType]) {
-    errorHandler[errorType](e.error);
-  } else {
-    console.error('未处理的错误:', e.error);
+  // 安全降级：使用 try-catch 包裹以防止自身崩溃
+  try {
+    const error = e.error || e;
+    const errorMessage = (error && error.message) || String(error) || '未知错误';
+    const errorStack = (error && error.stack) || '';
+
+    // 内联错误类型分类（替代原 determineErrorType 调用）
+    let errorType = 'RUNTIME_ERROR';
+    if (error && typeof error === 'object') {
+      if (error instanceof TypeError && errorMessage.includes('fetch') ||
+          errorMessage.includes('network') || errorMessage.includes('Network') ||
+          errorMessage.includes('Failed to fetch')) {
+        errorType = 'NETWORK_ERROR';
+      } else if (errorMessage.includes('storage') || errorMessage.includes('Storage') ||
+                 errorMessage.includes('quota') || errorMessage.includes('Quota')) {
+        errorType = 'STORAGE_ERROR';
+      }
+    }
+
+    // 内联分类处理（替代原 handleNetworkError / handleStorageError / handleRuntimeError）
+    switch (errorType) {
+      case 'NETWORK_ERROR':
+        console.warn('[Utils] 网络错误（已捕获）:', errorMessage);
+        break;
+      case 'STORAGE_ERROR':
+        console.warn('[Utils] 存储错误（已捕获）:', errorMessage);
+        break;
+      case 'RUNTIME_ERROR':
+      default:
+        console.error('[Utils] 运行时错误:', errorMessage);
+        break;
+    }
+
+    // 保留堆栈信息供调试
+    if (errorStack) {
+      console.debug('[Utils] 错误堆栈:', errorStack);
+    }
+  } catch (innerErr) {
+    // 终极安全网：即使是降级逻辑本身出错也不再抛异常
+    try {
+      console.error('[Utils] 错误处理过程异常:', innerErr);
+    } catch (_) {
+      // 不做任何事，防止三次崩溃
+    }
   }
 });
 

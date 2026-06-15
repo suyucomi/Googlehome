@@ -402,6 +402,7 @@ window.createContextMenu = function(x, y, square) {
 
     if (confirmed) {
       square.dataset.title = confirmed.name;
+      square.setAttribute('aria-label', `${confirmed.name} - ${url}`);
       const titleSpan = square.parentNode.querySelector('.square-title');
       titleSpan.textContent = confirmed.name;
       await saveData();
