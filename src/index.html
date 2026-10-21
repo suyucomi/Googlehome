@@ -5,164 +5,196 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="个人书签管理主页">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
   <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
   <title>Home</title>
-  <!-- 只保留主样式表 -->
-  <link rel="stylesheet" href="css/ui.css">
-</head>
-<body>
-  <div class="container">
-    <!-- 侧边栏触发按钮（移动端显示） -->
-    <button class="sidebar-trigger" id="sidebarTrigger" title="打开侧边栏" aria-label="打开侧边栏" aria-expanded="false" aria-controls="sidebar">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </button>
 
-    <!-- 侧边栏 -->
-    <div class="sidebar collapsed" id="sidebar" role="navigation" aria-label="书签页面侧边栏">
+  <!-- 首帧前同步写入侧栏布局状态，避免主内容列首帧后位移造成 CLS -->
+  <script src="js/boot-state.js"></script>
+
+  <!-- 分层样式：base → layout → 组件 → overlays → perf（顺序即层叠顺序） -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/search.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/squares.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/overlays.css">
+  <link rel="stylesheet" href="css/perf.css">
+
+  <!-- 模块预加载：抹平 ESM 依赖图的请求瀑布（直接并行抓取，启动更快） -->
+  <link rel="modulepreload" href="js/core/config.js">
+  <link rel="modulepreload" href="js/core/utils.js">
+  <link rel="modulepreload" href="js/core/dom.js">
+  <link rel="modulepreload" href="js/core/storage.js">
+  <link rel="modulepreload" href="js/core/store.js">
+  <link rel="modulepreload" href="js/features/settings.js">
+  <link rel="modulepreload" href="js/features/import-export.js">
+  <link rel="modulepreload" href="js/ui/frame.js">
+  <link rel="modulepreload" href="js/ui/dialogs.js">
+  <link rel="modulepreload" href="js/ui/flyout.js">
+  <link rel="modulepreload" href="js/ui/sidebar.js">
+  <link rel="modulepreload" href="js/ui/squares.js">
+  <link rel="modulepreload" href="js/ui/search.js">
+  <link rel="modulepreload" href="js/ui/settings-panel.js">
+  <link rel="modulepreload" href="js/ui/paste.js">
+</head>
+<body class="perf-mode">
+  <div class="container" id="appContainer">
+    <!-- 侧边栏（桌面：常驻可收起；移动端：抽屉） -->
+    <aside class="sidebar collapsed" id="sidebar" role="navigation" aria-label="书签页面侧边栏" aria-hidden="true" inert>
       <div class="sidebar-header">
-        <h3>书签页面</h3>
-        <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开" aria-label="收起侧边栏" aria-expanded="true" aria-controls="sidebar">
+        <h2 class="sidebar-title">书签页面</h2>
+        <button type="button" class="sidebar-toggle" id="sidebarToggle" title="收起/展开" aria-label="收起侧边栏" aria-expanded="false" aria-controls="sidebar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
-      
+
       <div class="sidebar-content">
-        <!-- 书签页面列表 -->
-        <div class="bookmark-pages" id="bookmarkPages">
-          <!-- 页面项将通过JS动态添加 -->
-        </div>
-        
-        <!-- 添加新页面按钮 -->
-        <button class="add-page-btn" id="addPageBtn" title="添加新页面">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <div class="bookmark-pages" id="bookmarkPages" role="list" aria-label="书签页面列表"></div>
+
+        <button type="button" class="add-page-btn" id="addPageBtn" title="添加新页面">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <span>添加页面</span>
         </button>
-        
-        <!-- 设置按钮 -->
-        <button class="sidebar-settings-btn" id="sidebarSettingsBtn" title="设置">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+        <button type="button" class="sidebar-settings-btn" id="sidebarSettingsBtn" title="设置" aria-haspopup="dialog" aria-controls="settingsPanel" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="2"/>
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z" stroke="currentColor" stroke-width="2"/>
           </svg>
           <span>设置</span>
         </button>
       </div>
-    </div>
-    
-    <!-- 侧边栏遮罩 -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    
-    <!-- 悬浮页面图标容器（侧边栏收起时显示） -->
-    <div class="floating-page-icons" id="floatingPageIcons"></div>
-    
-    <!-- 设置面板 -->
-    <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="设置面板" aria-modal="true" aria-hidden="true">
-      <div class="settings-header">
-        <h2 id="settingsTitle">设置</h2>
-        <button class="close-button" id="closeSettings" aria-label="关闭设置" aria-controls="settingsPanel">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
+    </aside>
+
+    <button type="button" class="sidebar-trigger" id="sidebarTrigger" title="打开侧边栏" aria-label="打开侧边栏" aria-expanded="false" aria-controls="sidebar">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+
+    <!-- 主内容区：标题 / 搜索 / 分类提示条 / 书签网格 -->
+    <main class="app-main" id="appMain" role="main">
+      <h1 class="page-title">What are you looking for today?</h1>
+
+      <div class="search-container" role="search">
+        <div class="search-box-wrapper">
+          <div class="search-select-container">
+            <button type="button" class="search-select" id="searchEngine" title="选择搜索引擎" aria-label="选择搜索引擎" aria-haspopup="listbox" aria-expanded="false" aria-controls="searchEngineDropdown"></button>
+            <div class="search-select-dropdown" id="searchEngineDropdown" role="listbox" aria-label="搜索引擎列表"></div>
+          </div>
+          <div class="search-box">
+            <input type="text" id="searchInput" name="searchInput" autocomplete="off" aria-label="在搜索引擎上搜索" placeholder="">
+          </div>
+        </div>
       </div>
-      
-      <!-- 移除"背景设置"标题,直接显示设置内容 -->
-      <div class="settings-section">
+
+      <div class="folder-bar-slot" id="folderBarSlot"></div>
+      <div class="squares-container" id="squaresContainer" role="list" aria-label="书签列表"></div>
+    </main>
+  </div>
+
+  <!-- 设置面板：固定头部 + 可滚动 body -->
+  <aside class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true" inert>
+    <header class="settings-header">
+      <h2 id="settingsTitle">设置</h2>
+      <button type="button" class="close-button" id="closeSettings" aria-label="关闭设置">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="settings-body">
+      <section class="settings-section">
+        <h3>背景</h3>
         <div class="settings-content">
           <div class="setting-item">
             <div class="background-preview-window">
-              <img id="previewImage" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+              <img id="previewImage" alt="背景预览" style="display:none">
               <div class="preview-placeholder" id="previewPlaceholder">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z" fill="currentColor"/>
                 </svg>
                 <span>暂无背景图片</span>
               </div>
             </div>
             <div class="background-options">
-              <input type="file" id="backgroundFile" accept="image/*" style="display: none">
+              <input type="file" id="backgroundFile" accept="image/*" style="display:none">
               <label for="backgroundFile" class="upload-btn">选择图片</label>
             </div>
           </div>
           <div class="setting-item">
             <label for="blurRange">模糊度 <span id="blurValue">0</span>px</label>
-            <input type="range" id="blurRange" min="0" max="20" value="0">
+            <input type="range" id="blurRange" min="0" max="20" value="0" disabled>
           </div>
           <div class="setting-item">
             <label for="brightnessRange">亮度 <span id="brightnessValue">100</span>%</label>
-            <input type="range" id="brightnessRange" min="50" max="150" value="100">
+            <input type="range" id="brightnessRange" min="50" max="150" value="100" disabled>
           </div>
           <div class="setting-item">
-            <button class="confirm-btn" id="confirmBackground">确定</button>
+            <button type="button" class="confirm-btn" id="confirmBackground">确定</button>
           </div>
         </div>
-      </div>
-      
-      <!-- 备份与恢复部分 -->
-      <div class="settings-section">
+      </section>
+
+      <section class="settings-section">
+        <h3>智能书签分类</h3>
+        <div class="settings-content">
+          <div class="setting-item setting-item-column">
+            <label for="smartApiKey">TypeSafe API Key</label>
+            <input type="password" id="smartApiKey" placeholder="apikey_..." autocomplete="off">
+          </div>
+          <div class="setting-item setting-item-column">
+            <label for="smartModel">模型</label>
+            <input type="text" id="smartModel" placeholder="jev-latest">
+          </div>
+          <div class="setting-item">
+            <label class="smart-checkbox"><input type="checkbox" id="smartAutoClassify"> 星标时自动分类并同步到主题</label>
+          </div>
+          <div class="setting-item">
+            <label class="smart-checkbox"><input type="checkbox" id="smartTaxonomy"> 允许使用推荐分类（自动创建目录）</label>
+          </div>
+          <div class="setting-item smart-actions">
+            <button type="button" class="confirm-btn" id="smartReimport">重新导入浏览器书签</button>
+            <span class="smart-status" id="smartStatus" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>性能</h3>
+        <div class="settings-content">
+          <div class="setting-item">
+            <label class="smart-checkbox"><input type="checkbox" id="smartPerfMode"> 性能模式（默认开启：关闭书签图标毛玻璃与呼吸动画）</label>
+          </div>
+          <p class="smart-status">默认开启，优先流畅度；关闭后书签方块恢复毛玻璃质感（更吃 GPU）。</p>
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h3>备份与恢复</h3>
         <div class="settings-content">
           <div class="setting-item">
-            <button class="backup-btn" id="exportConfig">导出配置</button>
-            <button class="restore-btn" id="importConfig">导入配置</button>
-            <input type="file" id="configFileInput" accept=".json" style="display: none">
+            <button type="button" class="backup-btn" id="exportConfig">导出配置</button>
+            <button type="button" class="restore-btn" id="importConfig">导入配置</button>
+            <input type="file" id="configFileInput" accept=".json" style="display:none">
           </div>
         </div>
-      </div>
+      </section>
     </div>
-    
-    <!-- 预览遮罩 -->
-    <div class="preview-overlay" id="previewOverlay"></div>
-    
-    <!-- 搜索框区域 - 移到顶部 -->
-    <div class="search-container" role="search">
-      <div class="search-box-wrapper">
-        <!-- 搜索引擎选择器 -->
-        <div class="search-select-container">
-          <button class="search-select" id="searchEngine" title="选择搜索引擎" aria-label="选择搜索引擎" aria-haspopup="listbox" aria-expanded="false" aria-controls="searchEngineDropdown"></button>
-          <div class="search-select-dropdown" id="searchEngineDropdown" role="listbox" aria-label="搜索引擎列表"></div>
-        </div>
-        <!-- 搜索输入框 -->
-        <div class="search-box">
-          <input type="text" id="searchInput" name="searchInput" autocomplete="off" aria-label="在搜索引擎上搜索" placeholder="">
-        </div>
-      </div>
-    </div>
+  </aside>
 
-    <!-- 快捷方块容器 -->
-    <div class="squares-container" id="squaresContainer"></div>
-  </div>
+  <!-- 预览遮罩 -->
+  <div class="preview-overlay" id="previewOverlay"></div>
 
-  <!-- 配置文件 -->
-  <script src="js/config.js"></script>
-  <!-- 工具函数 -->
-  <script src="js/utils/utils.js"></script>
-  <!-- 存储相关功能 -->
-  <script src="js/utils/storage.js"></script>
-  <!-- 设置管理器 -->
-  <script src="js/utils/settings-manager.js"></script>
-  <!-- 页面管理器 -->
-  <script src="js/utils/page-manager.js"></script>
-  <!-- 动画相关功能 -->
-  <script src="js/utils/animation.js"></script>
-  <!-- 拖拽相功能 -->
-  <script src="js/utils/drag.js"></script>
-  <!-- 快捷方块组件 -->
-  <script src="js/components/squares.js"></script>
-  <!-- 搜索组件 -->
-  <script src="js/components/search.js"></script>
-  <!-- 配置管理器 -->
-  <script src="js/utils/config-manager.js"></script>
-  <!-- 主程序入口 -->
-  <script src="js/main.js"></script>
-  <!-- 粘贴处理功能 -->
-  <script src="js/paste.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

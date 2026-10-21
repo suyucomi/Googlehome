@@ -1,0 +1,126 @@
+/* ============================================================
+   perf.css — 性能模式开关 + 「减少动态效果」降级
+   ------------------------------------------------------------
+   本文件是唯一允许使用 !important 的地方（全局规则优先级最高层）：
+   1. body.perf-mode：方块去 backdrop-filter/box-shadow、关呼吸动画、
+      大面板 backdrop blur 降到 8px、缩短网格项过渡
+   2. @media (prefers-reduced-motion: reduce)：关闭动画/过渡，
+      保留可用性与最终可见状态
+   注意：不使用 content-visibility（软件渲染下长列表反而更慢）。
+   ============================================================ */
+
+/* ==================== body.perf-mode ==================== */
+
+/* 书签方块：去掉逐图标毛玻璃与阴影（300 条时的主要 GPU 开销） */
+body.perf-mode .square-container {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(48, 49, 52, 0.72) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.perf-mode .square-container:hover {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.perf-mode .square-title {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 关闭呼吸动画（搜索引擎选择器 / 旧 logo 呼吸） */
+body.perf-mode .search-select,
+body.perf-mode .line {
+  animation: none !important;
+}
+
+/* 大面板统一降到 8px 毛玻璃（设置 / 侧栏 / 搜索胶囊 / 分类浮层） */
+body.perf-mode .settings-panel,
+body.perf-mode .sidebar,
+body.perf-mode .search-box-wrapper,
+body.perf-mode .page-subfolder-flyout {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* 长列表交错动画的过渡成本更低 */
+body.perf-mode .square-list-item {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+/* 拖拽重排时不再做弹簧过渡 */
+body.perf-mode .square-container {
+  transition-duration: 0.15s;
+}
+
+/* ==================== 减少动态效果 ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* 关键交互元素直接取消动画/过渡，避免长列表淡入延迟 */
+  .square-list-item,
+  .square-container,
+  .page-subfolder-flyout,
+  .settings-panel,
+  .sidebar,
+  .search-select,
+  .search-select-dropdown,
+  .icon-switching,
+  .context-menu,
+  .toast,
+  .sidebar-overlay {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* 网格项始终可见（JS 可能写入内联 opacity/transform，用 !important 兜底） */
+  .square-list-item {
+    opacity: 1 !important;
+    transform: none !important;
+    transition-delay: 0ms !important;
+  }
+
+  /* 悬浮只保留反馈色，不做位移缩放 */
+  .square-container:hover:not(.dragging) {
+    transform: none !important;
+  }
+
+  .square-container:hover:not(.dragging)::before {
+    transform: none !important;
+  }
+
+  /* 一次性入场动画直接呈现最终状态 */
+  .page-title,
+  .name-dialog,
+  .name-dialog-header,
+  .name-dialog-content,
+  .name-dialog-footer,
+  .dialog-overlay,
+  .context-menu {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* 设置面板：取消过渡但保留滑入后的最终位置（隐藏态 transform 不动） */
+  .settings-panel.active,
+  .settings-panel[aria-hidden="false"] {
+    transition: none !important;
+  }
+
+  .settings-panel.active .settings-header,
+  .settings-panel[aria-hidden="false"] .settings-header {
+    animation: none !important;
+  }
+}

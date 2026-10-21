@@ -1,0 +1,185 @@
+/* ============================================================
+   base.css — 设计令牌 / reset / html·body / 背景装饰层
+   ------------------------------------------------------------
+   职责：
+   1. :root 设计令牌（颜色、圆角、阴影、动效时长、布局尺寸、z-index）
+   2. 最小 reset 与 html/body 基础排版（深色 Linear 风）
+   3. 页面级背景（渐变 + 网格 + 暗角）与背景图图层容器
+   4. 滚动条隐藏等全局基础设施
+   本文件不含任何组件规则；组件文件只允许引用变量。
+   ============================================================ */
+
+:root {
+  /* ---------- 颜色 ---------- */
+  --app-bg: #07080d;
+  --app-bg-2: #0b0d14;
+  --surface-1: rgba(12, 14, 22, 0.72);
+  --surface-2: rgba(18, 20, 30, 0.78);
+  --surface-3: rgba(26, 29, 42, 0.82);
+  --panel-bg: rgba(8, 10, 18, 0.82);
+  --panel-bg-strong: rgba(8, 10, 18, 0.84);
+  --overlay-bg: rgba(0, 0, 0, 0.62);
+  --border-subtle: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text-primary: #f7f8ff;
+  --text-secondary: #c9cedc;
+  --text-muted: #858b9d;
+  --accent: #7c83ff;
+  --accent-2: #55b3ff;
+  --accent-warm: #ff6b8a;
+  --danger: #ff6363;
+  --accent-soft: rgba(124, 131, 255, 0.14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --focus-ring: 0 0 0 3px rgba(124, 131, 255, 0.4);
+
+  /* ---------- 圆角 ---------- */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* ---------- 阴影 ---------- */
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.36);
+  --shadow-float: 0 28px 90px rgba(0, 0, 0, 0.48), var(--glass-highlight);
+  --shadow-panel: 0 24px 70px rgba(0, 0, 0, 0.42), var(--glass-highlight);
+
+  /* ---------- 动效 ---------- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 0.15s;
+  --dur-base: 0.3s;
+  --dur-slow: 0.6s;
+
+  /* ---------- 毛玻璃 ---------- */
+  --blur-panel: 28px;
+  --blur-soft: 18px;
+  --blur-icon: 22px;
+
+  /* ---------- 布局尺寸 ---------- */
+  --sidebar-w: 300px; /* 桌面侧栏 / 移动抽屉统一宽度（历史 280/300/320 不一致的根因） */
+  --sidebar-inset: 14px; /* 浮动面板与视口边缘的间距 */
+  --trigger-size: 46px; /* 侧栏触发器尺寸 */
+  --content-max: 720px; /* 书签网格最大宽度 */
+  --search-max: 600px; /* 搜索区最大宽度 */
+
+  /* ---------- 字体 ---------- */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Microsoft YaHei", sans-serif;
+
+  /* ---------- 层叠顺序（唯一来源，禁止组件写字面量） ----------
+     内容 < 浮层/下拉 < 遮罩 < 侧栏 < 触发器 < 设置面板 < 菜单/弹窗/Toast */
+  --z-backdrop: -1; /* 背景图图层 */
+  --z-decoration: 0; /* body 网格/暗角装饰 */
+  --z-content: 1; /* 主内容 */
+  --z-raised: 2; /* 组件内部悬浮（方块 hover、标题） */
+  --z-tooltip: 10; /* 组件内部 tooltip */
+  --z-drag: 40; /* 拖拽中的方块 */
+  --z-flyout: 60; /* 搜索下拉、分类浮层 */
+  --z-overlay: 80; /* 移动端侧栏遮罩 */
+  --z-sidebar: 100; /* 侧栏 / 移动抽屉 */
+  --z-trigger: 110; /* 侧栏触发按钮 */
+  --z-settings: 120; /* 设置面板 */
+  --z-menu: 200; /* 右键菜单 / 弹窗 / Toast / 侧栏二级分类浮层 */
+
+  color-scheme: dark;
+}
+
+/* ---------- reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  font-family: var(--font-sans);
+  font-feature-settings: "cv01", "ss03", "kern";
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 22% 18%, rgba(124, 131, 255, 0.24), transparent 30vw),
+    radial-gradient(circle at 82% 12%, rgba(85, 179, 255, 0.16), transparent 28vw),
+    radial-gradient(circle at 72% 82%, rgba(255, 107, 138, 0.12), transparent 30vw),
+    linear-gradient(135deg, #05060a 0%, var(--app-bg) 42%, #0b0d16 100%);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  font-size: inherit;
+}
+
+a {
+  color: var(--accent-2);
+}
+
+/* ---------- 页面背景装饰层（网格 + 暗角） ---------- */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-decoration);
+}
+
+body::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at 50% 36%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 76%);
+  -webkit-mask-image: radial-gradient(circle at 50% 36%, black 0%, rgba(0, 0, 0, 0.5) 42%, transparent 76%);
+  opacity: 0.5;
+}
+
+body::after {
+  background: radial-gradient(
+    circle at 50% 32%,
+    transparent 0 28%,
+    rgba(0, 0, 0, 0.38) 78%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+}
+
+/* ---------- 用户背景图图层（JS 动态插入；旧层用于交叉淡入） ---------- */
+.background-layer,
+.background-layer-old {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: var(--z-backdrop);
+  pointer-events: none;
+  transition: opacity var(--dur-slow) ease, filter var(--dur-slow) ease;
+}

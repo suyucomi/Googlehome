@@ -1,0 +1,430 @@
+/* ============================================================
+   settings.css — 设置面板（固定头 + 独立滚动 body）与全部表单控件
+   ------------------------------------------------------------
+   职责：
+   1. .settings-panel 浮动玻璃面板：transform 滑入，overflow:hidden 由面板掌控
+   2. .settings-header 固定；.settings-body 自身 overflow-y:auto（overscroll-behavior:contain）
+   3. .settings-section/.settings-content/.setting-item 及表单控件
+   4. body.settings-open 滚动锁
+   宽度：min(420px, 100%)；移动端 100% 全屏。
+   ============================================================ */
+
+/* 设置打开时锁住背景滚动（主滚动容器是 .app-main） */
+body.settings-open {
+  overflow: hidden;
+}
+
+body.settings-open .app-main {
+  overflow: hidden;
+}
+
+/* ---------- 面板 ---------- */
+.settings-panel {
+  position: fixed;
+  top: var(--sidebar-inset);
+  right: var(--sidebar-inset);
+  z-index: var(--z-settings);
+  width: min(420px, 100%);
+  height: calc(100vh - var(--sidebar-inset) * 2);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: var(--panel-bg-strong);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  transform: translateX(calc(100% + var(--sidebar-inset) * 2));
+  visibility: hidden;
+  transition:
+    transform 0.32s var(--ease-standard),
+    visibility 0s linear 0.32s;
+}
+
+.settings-panel.active,
+.settings-panel[aria-hidden="false"] {
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    transform 0.32s var(--ease-standard),
+    visibility 0s linear 0s;
+}
+
+/* 顶部柔光装饰（不拦截交互） */
+.settings-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-decoration);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.075), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%);
+  opacity: 0.9;
+}
+
+/* ---------- 固定头部 ---------- */
+.settings-header {
+  position: relative;
+  z-index: var(--z-content);
+  flex: 0 0 auto;
+  min-height: 68px;
+  margin: 0;
+  padding: 18px 18px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(8, 10, 18, 0.72);
+  backdrop-filter: blur(var(--blur-soft));
+  -webkit-backdrop-filter: blur(var(--blur-soft));
+}
+
+.settings-header h2 {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.close-button {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.close-button:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+/* ---------- 可滚动 body ---------- */
+.settings-body {
+  position: relative;
+  z-index: var(--z-content);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.settings-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.settings-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}
+
+/* ---------- 分组卡片 ---------- */
+.settings-section {
+  position: relative;
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section h3 {
+  margin: 0 0 12px;
+  color: rgba(247, 248, 255, 0.9);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setting-item {
+  margin: 0;
+}
+
+.setting-item label {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(201, 206, 220, 0.72);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.setting-item-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.setting-item-column label {
+  margin-bottom: 0;
+}
+
+/* 智能分类输入框 */
+.setting-item-column input[type="password"],
+.setting-item-column input[type="text"] {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.setting-item-column input[type="password"]:focus,
+.setting-item-column input[type="text"]:focus {
+  border-color: rgba(124, 131, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(124, 131, 255, 0.14);
+}
+
+/* ---------- 背景预览 ---------- */
+.background-preview-window {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+#previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.3s ease;
+}
+
+.preview-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: rgba(201, 206, 220, 0.52);
+}
+
+.preview-placeholder svg {
+  opacity: 0.5;
+}
+
+.preview-placeholder span {
+  font-size: 12px;
+}
+
+.background-options {
+  display: flex;
+  gap: 8px;
+  margin-top: 0;
+}
+
+/* ---------- 按钮 ---------- */
+.upload-btn,
+.confirm-btn,
+.backup-btn,
+.restore-btn {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(247, 248, 255, 0.88);
+  font-size: 13px;
+  font-weight: 560;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.upload-btn:hover,
+.confirm-btn:hover,
+.backup-btn:hover,
+.restore-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.13);
+  transform: translateY(-1px);
+}
+
+.upload-btn:active,
+.confirm-btn:active,
+.backup-btn:active,
+.restore-btn:active {
+  transform: translateY(0);
+}
+
+.upload-btn:focus-visible,
+.confirm-btn:focus-visible,
+.backup-btn:focus-visible,
+.restore-btn:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.backup-btn,
+.restore-btn {
+  margin-bottom: 10px;
+}
+
+.restore-btn {
+  margin-bottom: 0;
+}
+
+/* ---------- 滑块 ---------- */
+input[type="range"] {
+  width: 100%;
+  height: 5px;
+  margin: 6px 0 2px;
+  border-radius: 999px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  accent-color: var(--accent);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 3px solid rgba(8, 10, 18, 0.95);
+  border-radius: 50%;
+  background: rgba(247, 248, 255, 0.86);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 3px rgba(124, 131, 255, 0.18);
+}
+
+/* ---------- 智能分类控件 ---------- */
+.setting-item label.smart-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.smart-checkbox input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.smart-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.smart-status {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- 移动端：全屏 ---------- */
+@media (max-width: 768px) {
+  .settings-panel {
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    transform: translateX(100%);
+  }
+
+  .settings-panel.active,
+  .settings-panel[aria-hidden="false"] {
+    transform: translateX(0);
+  }
+
+  .settings-header {
+    padding: 16px 16px 12px;
+  }
+
+  .settings-body {
+    padding: 12px;
+  }
+
+  .settings-section {
+    padding: 12px;
+    border-radius: 14px;
+  }
+}

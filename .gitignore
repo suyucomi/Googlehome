@@ -56,3 +56,7 @@ node_modules/
 dist/
 build/
 .cache/
+
+# ===== 本地审计 / 调试产物（报告文档在 docs/，截图与本地产物不入库）=====
+audit/
+tools/_debug-*.mjs

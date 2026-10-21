@@ -1,0 +1,342 @@
+/* ============================================================
+   squares.css — 书签网格 / 方块 / 标题 / 拖拽与空状态
+   ------------------------------------------------------------
+   职责：
+   1. #squaresContainer 网格（auto-fill minmax(76px,1fr)，任意视口不横向滚动）
+   2. .square-container 方块（玻璃质感、hover、loading/error/placeholder）
+   3. .square-title 绝对定位 tooltip（不参与网格高度）
+   4. 拖拽状态：dragging / drag-placeholder / drag-end / dragging-in-progress
+   5. 空状态、页面切换淡入淡出
+   ============================================================ */
+
+/* ---------- 网格容器 ---------- */
+.squares-container {
+  position: relative;
+  z-index: var(--z-content);
+  isolation: isolate;
+  /* 作为 .app-main（column flex）的子项禁止被压缩：高度由行数撑开，滚动交由 .app-main */
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: min(var(--content-max), 100%);
+  min-height: 200px;
+  margin-top: 25px;
+  padding: 2px 8px 34px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 18px 12px;
+  align-content: flex-start;
+  justify-content: center;
+  justify-items: center;
+}
+
+.squares-container.page-switching {
+  pointer-events: none;
+}
+
+/* ---------- 网格单元 ---------- */
+.square-list-item {
+  position: relative;
+  z-index: var(--z-content);
+  width: 56px;
+  height: 56px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  isolation: isolate;
+  contain: layout style;
+  transition:
+    opacity 0.3s var(--ease-standard),
+    transform 0.3s var(--ease-spring);
+}
+
+.square-list-item:hover,
+.square-list-item:focus-within {
+  z-index: var(--z-raised);
+}
+
+/* 页面切换：淡出 / 淡入 */
+.square-list-item.fade-out {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-standard),
+    transform 0.2s var(--ease-standard);
+}
+
+.square-list-item.fade-in {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  transition:
+    opacity 0.4s var(--ease-spring),
+    transform 0.4s var(--ease-spring);
+}
+
+/* ---------- 方块 ---------- */
+.square-container {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.105);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045));
+  backdrop-filter: blur(var(--blur-icon)) saturate(1.22);
+  -webkit-backdrop-filter: blur(var(--blur-icon)) saturate(1.22);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center;
+  transition:
+    transform 0.3s var(--ease-spring),
+    opacity 0.3s var(--ease-standard),
+    background-color 0.3s ease,
+    left 0.2s var(--ease-standard),
+    top 0.2s var(--ease-standard);
+}
+
+/* 排序移动时只过渡位移/变换（更贴近拖拽重排） */
+.square-container:not(.dragging):not(.placeholder) {
+  transition:
+    transform 0.3s var(--ease-spring),
+    left 0.3s var(--ease-spring),
+    top 0.3s var(--ease-spring);
+}
+
+/* 站点图标由 JS 通过 --favicon-url 注入 */
+.square-container::before {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background-color: transparent;
+  background-image: var(--favicon-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--favicon-size, 30px);
+  opacity: 1;
+  z-index: var(--z-raised);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.square-container:hover:not(.dragging) {
+  z-index: var(--z-raised);
+  border-color: rgba(124, 131, 255, 0.36);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.075));
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.46),
+    0 0 34px rgba(124, 131, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translate3d(0, -6px, 0) scale(1.08);
+}
+
+.square-container:hover:not(.dragging)::before {
+  transform: scale(1.04);
+}
+
+.square-container:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+/* ---------- 方块状态 ---------- */
+.square-container.placeholder {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  background-color: rgba(60, 64, 67, 0.1);
+  opacity: 0.4;
+  pointer-events: none;
+  transform: scale(1);
+}
+
+.square-list-item.drag-placeholder {
+  pointer-events: none;
+}
+
+.square-list-item.drag-placeholder .square-container.placeholder {
+  opacity: 0.55;
+}
+
+.square-container.dragging {
+  position: relative;
+  z-index: var(--z-drag);
+  opacity: 0.9;
+  cursor: move;
+  border-color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(60, 64, 67, 0.9);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05);
+}
+
+.square-container.drag-end {
+  animation: drop-effect 0.4s var(--ease-spring);
+}
+
+.square-container.moving {
+  z-index: var(--z-raised);
+  transition: transform 0.2s var(--ease-standard);
+}
+
+.square-container.loading {
+  animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+.square-container.error {
+  border-color: rgba(255, 99, 71, 0.5);
+}
+
+.square-container.error::before {
+  content: '!';
+  color: #ff6347;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+/* ---------- 拖拽中的其余方块 ---------- */
+.squares-container.dragging-in-progress .square-container:not(.dragging):not(.placeholder) {
+  opacity: 0.7;
+  transform: scale(0.95);
+  transition:
+    transform 0.3s var(--ease-standard),
+    opacity 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* ---------- 拖拽列表项 ---------- */
+.square-list-item.dragging {
+  z-index: var(--z-drag);
+  opacity: 0.6;
+}
+
+.square-list-item.dragging .square-container {
+  opacity: 0.9;
+  transform: scale(1);
+}
+
+.square-list-item.dragging .square-title {
+  display: none;
+}
+
+.square-list-item.drag-image {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ---------- 方块标题（绝对定位，不参与网格高度） ---------- */
+.square-title {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-tooltip);
+  max-width: 76px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: rgba(60, 64, 67, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(247, 248, 255, 0.78);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.05px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-standard), margin-top 0.2s var(--ease-standard),
+    color 0.2s var(--ease-standard);
+}
+
+.square-container:hover:not(.dragging) + .square-title {
+  opacity: 1;
+  margin-top: 8px;
+  color: var(--text-primary);
+}
+
+/* ---------- 动画 ---------- */
+@keyframes drop-effect {
+  0% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes loading-pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes swap-items {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.swap-animation {
+  animation: swap-items 0.3s var(--ease-standard);
+}
+
+.square-list-item.hover-scale {
+  z-index: var(--z-raised);
+  transform: scale(1.2);
+}
+
+/* ---------- 空状态 ---------- */
+.empty-state {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 48px 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 768px) {
+  .square-container {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+  }
+
+  .square-list-item {
+    width: 50px;
+    height: 50px;
+  }
+
+  .squares-container {
+    margin-top: 20px;
+    padding: 2px 4px 28px;
+  }
+}

@@ -1,0 +1,132 @@
+/* ============================================================
+   layout.css — 应用外壳与主内容布局
+   ------------------------------------------------------------
+   职责：
+   1. .container 外壳（桌面侧栏展开时整体右移，不再用 padding 挤压）
+   2. .app-main 主内容列：纵向滚动 + 水平居中 + min-width:0
+   3. .page-title 真实标题（opacity/translate 入场，禁止宽度动画）
+   4. 桌面 / 移动断点的外壳差异
+   宽度规则：内部一律 % / min()，任何视口不得出现横向滚动。
+   ============================================================ */
+
+/* ---------- 外壳 ---------- */
+.container {
+  position: relative;
+  z-index: var(--z-content);
+  width: 100%;
+  height: 100vh;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ---------- 主内容区：唯一纵向滚动容器 ---------- */
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  padding: clamp(72px, 13vh, 110px) 20px 24px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-main::-webkit-scrollbar {
+  display: none;
+}
+
+/* 分类提示条容器为空时不占位 */
+.folder-bar-slot:empty {
+  display: none;
+}
+
+/* ---------- 页面标题（替代旧 .container::before 伪元素打字动画） ---------- */
+.page-title {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 0 28px;
+  padding: 0;
+  color: rgba(247, 248, 255, 0.92);
+  font-family: var(--font-sans);
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-align: center;
+  text-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.46),
+    0 0 26px rgba(124, 131, 255, 0.18);
+  /* 只做透明度/位移，绝不 do width/ch 动画，避免回流与 CLS */
+  animation: page-title-in var(--dur-slow) var(--ease-standard) both;
+}
+
+@keyframes page-title-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* ---------- 桌面（>768px）：侧栏展开时整体右移 ---------- */
+@media (min-width: 769px) {
+  /* 注意：这里刻意不给 margin-left / width 加 transition。
+     这两个是布局属性，逐帧动画会让主内容列每帧重排（300 条书签时成本高），
+     并且每次开合都会产生 layout shift（真实点击虽被 hadRecentInput 排除，
+     但程序化开合/其它触发仍会记入 CLS）。侧栏自身用 transform 滑入滑出，
+     主内容区瞬时让位，视觉上更利落；首帧状态由 boot-state.js 预置。 */
+
+  /* 关键修复：用 margin/width 让出侧栏宽度，而不是 padding-left 挤压 + 100vw 溢出。
+     状态写在 <html data-sidebar="open|closed"> 上（boot-state.js 首帧前预置、
+     ui/sidebar.js 开合后同步），不使用异步添加的 .container 类，避免首帧位移。 */
+  html[data-sidebar="open"] .container {
+    margin-left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+  }
+
+  html[data-sidebar="closed"] .container {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* ---------- 移动端（≤768px）：外壳不位移，内容占满 ---------- */
+@media (max-width: 768px) {
+  .container {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .app-main {
+    padding: 66px 16px 24px;
+  }
+
+  .page-title {
+    margin-bottom: 24px;
+    font-size: 20px;
+    line-height: 1.3;
+    /* 窄屏允许折行，避免 nowrap 造成横向溢出 */
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* 移动抽屉打开时锁定背景滚动 */
+  body.sidebar-open-mobile .app-main {
+    overflow: hidden;
+  }
+}

@@ -1,0 +1,600 @@
+/* ============================================================
+   sidebar.css — 侧栏 / 移动抽屉 / 页面列表 / 页面操作 / 二级分类浮层
+   ------------------------------------------------------------
+   职责：
+   1. .sidebar-trigger 侧栏触发器（桌面收起时显示，移动端常显）
+   2. .sidebar 浮动玻璃面板 + 移动端抽屉（层级见 base.css 的 z 令牌）
+   3. .bookmark-page-item 页面列表项（hover/focus 才显示操作按钮，且不可点击穿透）
+   4. .page-subfolder-flyout 二级分类浮层（JS clamp 视口）
+   5. .active-folder-bar 当前分类提示条 + 占位槽
+   统一宽度 --sidebar-w: 300px；移动抽屉同值（min() 兜底超窄屏）。
+   ============================================================ */
+
+/* ---------- 触发器 ---------- */
+.sidebar-trigger {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  z-index: var(--z-trigger);
+  width: var(--trigger-size);
+  height: var(--trigger-size);
+  padding: 0;
+  display: none; /* 由断点规则控制显示 */
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: rgba(12, 14, 22, 0.72);
+  color: var(--text-primary);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), var(--glass-highlight);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease-standard),
+    border-color var(--dur-base) var(--ease-standard),
+    transform var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard);
+}
+
+.sidebar-trigger:hover {
+  background: rgba(60, 64, 67, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-trigger:active {
+  transform: scale(0.95);
+}
+
+.sidebar-trigger:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.sidebar-trigger svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- 侧栏面板 ---------- */
+.sidebar {
+  position: fixed;
+  top: var(--sidebar-inset);
+  left: var(--sidebar-inset);
+  z-index: var(--z-sidebar);
+  width: var(--sidebar-w);
+  height: calc(100vh - var(--sidebar-inset) * 2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  transform: translateX(0);
+  visibility: visible;
+  transition:
+    transform var(--dur-base) var(--ease-standard),
+    visibility 0s linear 0s;
+}
+
+/* 收起：滑出 + 彻底不可见/不可点（JS 会同时加 inert） */
+.sidebar.collapsed {
+  transform: translateX(calc(-100% - var(--sidebar-inset) * 2));
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform var(--dur-base) var(--ease-standard),
+    visibility 0s linear var(--dur-base);
+}
+
+/* ---------- 侧栏头部 ---------- */
+.sidebar-header {
+  flex: 0 0 auto;
+  min-height: 68px;
+  padding: 18px 18px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sidebar-title {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-toggle {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+/* ---------- 侧栏内容（内部滚动） ---------- */
+.sidebar-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}
+
+.bookmark-pages {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 2px;
+}
+
+/* ---------- 页面列表项 ---------- */
+.bookmark-page-item {
+  position: relative;
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.bookmark-page-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.bookmark-page-item:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.bookmark-page-item.active {
+  background: rgba(255, 255, 255, 0.105);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 选中项左侧指示条 */
+.bookmark-page-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.82), transparent);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.28);
+}
+
+.page-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(247, 248, 255, 0.78);
+}
+
+.page-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.page-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.page-name {
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-count {
+  font-size: 11px;
+  color: rgba(201, 206, 220, 0.58);
+}
+
+/* 有二级分类的页面显示 ▸ */
+.bookmark-page-item.has-subfolders .page-name::after {
+  content: '▸';
+  margin-left: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.page-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 修复：默认不可见且不可点击（旧样式 opacity:0 仍可点击/聚焦） */
+.page-action-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.bookmark-page-item:hover .page-action-btn,
+.bookmark-page-item:focus-within .page-action-btn,
+.bookmark-page-item:focus .page-action-btn {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.page-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.page-action-btn:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 1px;
+}
+
+.page-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.delete-page-btn:hover {
+  background-color: rgba(255, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+/* ---------- 底部按钮 ---------- */
+.add-page-btn,
+.sidebar-settings-btn {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045));
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 560;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 10px 28px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.add-page-btn:hover,
+.sidebar-settings-btn:hover {
+  background: linear-gradient(180deg, rgba(124, 131, 255, 0.24), rgba(85, 179, 255, 0.1));
+  border-color: rgba(124, 131, 255, 0.42);
+  transform: translateY(-1px);
+}
+
+.add-page-btn:active,
+.sidebar-settings-btn:active {
+  transform: translateY(0);
+}
+
+.add-page-btn:focus-visible,
+.sidebar-settings-btn:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.add-page-btn svg,
+.sidebar-settings-btn svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.82;
+}
+
+.sidebar-settings-btn {
+  margin-top: 2px;
+}
+
+/* ---------- 移动端抽屉遮罩 ---------- */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--overlay-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-standard);
+}
+
+.sidebar-overlay[hidden] {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay:not([hidden]) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ---------- 二级分类浮层（JS clamp 到 visualViewport） ---------- */
+/* 使用 --z-menu：浮层从侧栏条目弹出，需要高于侧栏本身（600–768px 视口会向左翻转覆盖侧栏） */
+.page-subfolder-flyout {
+  position: fixed;
+  z-index: var(--z-menu);
+  min-width: 190px;
+  max-width: 300px;
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(22, 22, 28, 0.94);
+  backdrop-filter: blur(var(--blur-soft));
+  -webkit-backdrop-filter: blur(var(--blur-soft));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-6px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.page-subfolder-flyout.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+}
+
+.flyout-heading {
+  padding: 4px 10px 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.flyout-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flyout-item:hover,
+.flyout-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.flyout-item:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.flyout-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flyout-item-count {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
+/* ---------- 当前分类提示条 ---------- */
+.folder-bar-slot {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: min(var(--content-max), 100%);
+  display: flex;
+  justify-content: center;
+}
+
+.active-folder-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 0 auto 14px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+
+.active-folder-clear {
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.active-folder-clear:hover {
+  color: var(--text-primary);
+}
+
+.active-folder-clear:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+}
+
+/* ---------- 桌面断点：触发器显隐 ---------- */
+@media (min-width: 769px) {
+  .sidebar-trigger.show-on-desktop {
+    display: flex;
+  }
+
+  .sidebar.collapsed ~ .sidebar-trigger {
+    display: flex;
+  }
+
+  /* 侧栏展开时隐藏触发器，避免压住侧栏标题 */
+  .sidebar:not(.collapsed) ~ .sidebar-trigger {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: none;
+  }
+}
+
+/* ---------- 移动端：抽屉 ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    top: 10px;
+    left: 10px;
+    width: var(--sidebar-w);
+    max-width: calc(100% - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 20px;
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(calc(-100% - 24px));
+  }
+
+  .sidebar-trigger {
+    display: flex;
+  }
+
+  .sidebar:not(.collapsed) ~ .sidebar-trigger {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    z-index: var(--z-overlay);
+  }
+
+  /* 触摸设备没有 hover：操作按钮常显但弱化，避免完全无法操作 */
+  @media (hover: none) {
+    .page-action-btn {
+      opacity: 0.6;
+      visibility: visible;
+      pointer-events: auto;
+    }
+  }
+}
+
+/* ===== 首帧布局状态（html[data-sidebar]，见 boot-state.js） =====
+   JS 模块挂载前已可能发生首帧：根据预置状态让侧栏/触发器直接呈现最终样子，
+   避免“先隐藏再滑入”的闪烁。移动端是抽屉，不在此列。 */
+@media (min-width: 769px) {
+  html[data-sidebar="open"] .sidebar.collapsed {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  html[data-sidebar="closed"] .sidebar-trigger {
+    display: flex;
+  }
+}

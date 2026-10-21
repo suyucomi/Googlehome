@@ -1,0 +1,220 @@
+/* ============================================================
+   search.css — 搜索区 + 搜索引擎下拉
+   ------------------------------------------------------------
+   职责：搜索胶囊外壳、引擎选择按钮、输入框、引擎下拉列表。
+   规则只写一次；下拉定位在左侧对齐，避免窄视口下溢出。
+   ============================================================ */
+
+.search-container {
+  position: relative;
+  z-index: var(--z-flyout);
+  width: 100%;
+  max-width: min(var(--search-max), 100%);
+  margin: 0 0 34px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+/* 胶囊外壳：深色玻璃 + 悬浮边框 */
+.search-box-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
+  backdrop-filter: blur(26px) saturate(1.18);
+  -webkit-backdrop-filter: blur(26px) saturate(1.18);
+  box-shadow: var(--shadow-float), 0 0 0 1px rgba(124, 131, 255, 0.06);
+  transition: border-color var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard);
+}
+
+.search-box-wrapper:hover,
+.search-box-wrapper:focus-within {
+  border-color: rgba(124, 131, 255, 0.42);
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(124, 131, 255, 0.18),
+    0 0 42px rgba(124, 131, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+/* ---------- 搜索引擎选择器 ---------- */
+.search-select-container {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.search-select {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 8px 22px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    box-shadow var(--dur-base) var(--ease-standard),
+    border-color var(--dur-base) var(--ease-standard),
+    background-color var(--dur-base) var(--ease-standard),
+    opacity 0.25s var(--ease-standard),
+    transform 0.25s var(--ease-spring);
+  animation: select-breathe 4.5s ease-in-out infinite;
+}
+
+/* bing.svg 的 viewBox 是竖长的，单独修正显示尺寸 */
+.search-select[data-engine="bing"] {
+  background-size: 20px 20px;
+  background-position: center center;
+}
+
+.search-select:hover {
+  animation: none;
+  transform: translateY(-1px) scale(1.03);
+  border-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.search-select:focus-visible {
+  outline: 2px solid rgba(124, 131, 255, 0.85);
+  outline-offset: 2px;
+  animation: none;
+}
+
+/* 切换引擎图标时的淡出缩小态 */
+.search-select.icon-switching {
+  opacity: 0;
+  transform: scale(0.85);
+  animation: none;
+}
+
+@keyframes select-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    border-color: #5f6368;
+  }
+  50% {
+    box-shadow: 0 0 25px 2px rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* ---------- 下拉列表 ---------- */
+.search-select-dropdown {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 0;
+  z-index: var(--z-raised);
+  width: 210px;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: rgba(13, 15, 24, 0.82);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.2);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.2s var(--ease-standard),
+    transform 0.2s var(--ease-standard),
+    visibility 0.2s;
+}
+
+/* 展开状态：优先用 aria-expanded（真实状态），保留 .active 作为旧 JS 兼容 */
+.search-select[aria-expanded="true"] + .search-select-dropdown,
+.search-select-container.active .search-select-dropdown {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.search-select-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.search-select-option:hover,
+.search-select-option.active {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.search-select-option-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  flex: 0 0 auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+/* ---------- 输入框 ---------- */
+.search-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#searchInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 18px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--radius-pill);
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.12px;
+  box-shadow: none;
+}
+
+#searchInput::placeholder {
+  color: rgba(201, 206, 220, 0.58);
+}
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 768px) {
+  .search-container {
+    margin-bottom: 24px;
+  }
+
+  .search-box-wrapper {
+    gap: 8px;
+  }
+}
