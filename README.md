@@ -8,6 +8,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="manifest version"/>
+  <img src="https://img.shields.io/badge/version-2.0.0-7c83ff?style=flat-square" alt="version"/>
+  <img src="https://img.shields.io/badge/tests-64%20passing-3fb950?style=flat-square" alt="tests"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="license"/>
   <img src="https://img.shields.io/badge/Platform-Chrome-yellow?style=flat-square" alt="platform"/>
 </p>
@@ -19,30 +21,46 @@
 ## 🌈 界面预览
 
 <div align="center">
-  <img src="src\assets\images\主页.PNG" width="800px" alt="主界面"/>
-  <p align="center">简洁的主界面</p>
+  <img src="docs/images/v2-main.jpg" width="880px" alt="v2.0 主界面：侧栏页面 + 二级分类 + 书签网格（300 条/页实测）"/>
+  <p align="center">v2.0 主界面 · 侧栏一级分类 + 悬停二级分类 + 书签网格（300 条/页实测）</p>
 </div>
 
 <div align="center">
   <table>
     <tr>
       <td align="center">
-        <img src="src\assets\images\设置.PNG" width="400px"/><br/>
-        <sub>⚙️ 个性化设置</sub>
+        <img src="docs/images/v2-flyout.jpg" width="420px"/><br/>
+        <sub>🧠 二级分类悬浮面板（视口内 clamp）</sub>
       </td>
       <td align="center">
-        <img src="src\assets\images\粘贴.PNG" width="400px"/><br/>
-        <sub>📋 智能粘贴</sub>
+        <img src="docs/images/v2-settings.jpg" width="420px"/><br/>
+        <sub>⚙️ 设置面板（固定头 + 独立滚动）</sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <img src="docs/images/v2-mobile.jpg" width="240px"/><br/>
+        <sub>📱 移动端抽屉（390×844）</sub>
+      </td>
+      <td align="center">
+        <img src="docs/images/v2-before-900.jpg" width="320px"/><br/>
+        <sub>v1.9：900px 视口下网格越界 / 被侧栏遮挡</sub><br/>
+        <img src="docs/images/v2-after-900.jpg" width="320px"/><br/>
+        <sub>v2.0：排版修复后（无越界 / 无遮挡）</sub>
       </td>
     </tr>
   </table>
-</div>>
+</div>
 
 ## ✨ 核心特性
 
 - 📚 **多页面书签管理** - 在侧边栏创建、重命名、删除与切换不同书签页，独立管理收藏
-  - 页面切换即时响应，图标立即更新
+  - 页面切换 keyed diff + 按帧增量渲染，图标立即更新
   - 书签优雅淡入动画，错落有致的视觉效果
+- 🧠 **智能书签分类** - 与浏览器书签栏双向同步：一级目录 → 侧栏页面，二级目录 → 页面内分类
+  - 浏览器星标 → 自动分类（TypeSafe 模型 + 离线域名规则兜底）并镜像到主题
+  - 主题里粘贴/拖入网址 → 同时写入浏览器书签与当前分类
+- 🚀 **v2.0 架构与性能** - ESM 分层 + 单一数据源；300 条/页下单条更新 23ms、滚动 p95 19ms；排版问题 P0/P1 清零（见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)）
 - 🎯 **智能搜索与快捷键** - 下拉选择搜索引擎，支持 `Alt+数字` 快速切换，一键直达
   - 搜索引擎切换流畅动画，图标平滑过渡
   - 支持 8 种主流搜索引擎，图标显示优化
@@ -111,6 +129,8 @@
    - 点击"加载已解压的扩展程序"
    - 选择代码目录即可
 
+> **从 v1.x 升级到 v2.0**：覆盖代码后在 `chrome://extensions` 点「重新加载」即可。storage key 与 v1.x 完全一致，已有页面、书签、设置、API Key 全部保留，无需重新导入。
+
 ### 使用说明
 
 1. **打开新标签页** - 自动加载默认页面和书签
@@ -138,6 +158,36 @@
 - **CSS 单层化**：`ui.css`（3241 行 / 3 段追加覆盖）拆成 8 个分层文件共 2384 行，`!important` 只保留在 `perf.css`（32 处），z-index 全部令牌化
 - **module service worker**：background 与页面共用同一份 features 实现
 - **后台无头验证**：`tools/` 内 CDP 审计/性能/功能回归脚本，默认 `--headless=new`，不弹窗
+
+## 📁 项目结构（v2.0）
+
+```text
+src/
+├── index.html              # 8 个分层 CSS + 15 个 modulepreload + 单 module 入口
+├── css/                    # base / layout / search / sidebar / squares / settings / overlays / perf
+├── js/
+│   ├── boot-state.js       # 唯一同步脚本：首帧前预置侧栏布局（启动 CLS=0）
+│   ├── main.js             # 启动器：store.init → 应用主题 → 按优先级 mount UI
+│   ├── core/               # config / utils / dom / storage / store（单一数据源）
+│   ├── features/           # classifier / bookmark-sync / settings / import-export
+│   └── ui/                 # frame / dialogs / flyout / sidebar / squares / search / settings-panel / paste
+└── background.js           # ESM module service worker（首次导入 / 星标分类 / 域名缓存）
+tests/run-tests.mjs         # 64 项单元测试（原 23 项 + store/background/静态检查）
+tools/                      # headless CDP：布局审计 / 性能 / 功能回归 / 前后对比
+docs/                       # 架构与验收报告（见文末「文档导航」）
+```
+
+## 🧪 开发与验证
+
+```bash
+node tests/run-tests.mjs                 # 64 项单元测试
+node tools/functional-regression.mjs     # 真实 Chrome 功能回归（12 项）
+node tools/audit.mjs --ext . --out audit/after --label after       # 73 个「视口×状态」布局审计
+node tools/perf-audit.mjs --ext . --out audit/after/perf.json --label after
+node tools/compare.mjs --before audit/before --after audit/after   # 自动前后对比表
+```
+
+> 浏览器验证默认 `--headless=new` 后台运行、不弹窗；审计产物在 `audit/`（本地生成，已 gitignore），结论报告在 `docs/`。
 
 ## 📈 浏览量
 
@@ -193,72 +243,9 @@ node tests/run-tests.mjs
 
 1. `chrome://extensions` 加载本目录（`Googlehome`），开启开发者模式
 2. **停用**原来的「智能书签助手」，避免两个扩展同时处理星标事件
-3. 打开新标签页 → 首次会自动导入浏览器书签（12 个一级分类 / 403 条书签实测）
+3. 打开新标签页 → 首次会自动导入浏览器书签（一级目录建页面、二级目录成分类）
 4. 设置 →「智能书签分类」里重新填一次 TypeSafe API Key（扩展之间不共享存储），然后保持代理开启
 - 分类失败（没配 Key / 规则也没命中）时，书签留在浏览器原处，同时会出现在主题的「未分类」页面
-
-### 前端与性能优化（v1.5）
-
-- **图标零网络请求**：用 Chrome 内置 `_favicon`（`chrome-extension://<id>/_favicon/?pageUrl=…`）替代原来的 5 个公网图标服务。旧逻辑每个域名最多串行等 3+3+5+4+3 秒，还会把 base64 写满 localStorage；现在同步生成本地 URL。
-- **搜索图标直连扩展资源**：去掉 8 个搜索引擎图标的 `fetch → base64` 转换。
-- **首屏动画封顶**：长列表交错淡入延迟从 `i*20ms` 改为封顶 220ms，88 条书签不再等 1.7 秒才显示完。
-- **减少重绘**：页面计数没变化时跳过侧边栏全量重建；页面书签走内存缓存，hover 二级分类不再重复读 storage。
-- **合成层优化**：去掉每个方块常驻的 `will-change`，只在 hover/拖拽时提升；新增 `prefers-reduced-motion` 降级。
-- **域名缓存**：同一站点第二次星标直接复用上次分类（90 天 TTL），省一次模型调用。
-- **实时同步**：新标签页监听 `chrome.storage.onChanged`，在别的标签页星标后主题立即出现该书签。
-- **切换零写入**：页面内容没变化时 `saveData` 直接返回，切换分类不再重复写 storage；页面书签优先走内存缓存，缓存由 `storage.onChanged` 维护。
-- **空状态提示**：分类下没有书签时显示占位文案，而不是一片空白。
-- **去掉常驻动画循环**：`animation.js` 原来用 `requestAnimationFrame` 每秒 60 次给搜索框做呼吸动画（空闲也跑），现改为纯 CSS/合成层，空闲时不占主线程。
-- **性能模式（默认开启）**：每个书签图标不再用 `backdrop-filter` 毛玻璃，方块改为半透明纯色；呼吸动画关闭。想要毛玻璃质感可在 设置 →「性能」里取消勾选。
-- **焦点可见**：键盘操作时侧边栏、二级分类、书签方块有可见焦点环。
-
-### 浏览器实测与修复（v1.6 / v1.7 / v1.8）
-
-用 Chrome 155 + CDP（独立测试 profile，`--enable-unsafe-extension-debugging` + `Extensions.loadUnpacked`）实际加载扩展跑了完整流程，发现并修掉 5 个真实 bug：
-
-1. **页面切换直接报错**：`storage.js` 的 `saveData` 里 `const squaresData` 在二级分类过滤分支被重新赋值，抛 `TypeError: Assignment to constant variable`，导致切换页面/添加页面全部失败 → 改为 `let`。
-2. **星标后主题不刷新**：`watchStorage` 先处理 `bookmarkPages` 就 `return`，而 `mirrorToTheme` 同时写 `bookmarkPages` + `squares_*`，当前页面的书签变化永远被跳过 → 调整为先处理 `squares_*`，页面即时应答。
-3. **二级分类面板「全部」数量恒为 0**：计数按 folder 统计，`''` 键不存在 → 「全部」改用该页总数。
-4. **侧边栏展开时书签被遮住**：内容区按整窗居中，和 300px 侧边栏重叠 → 桌面端 `.container.sidebar-open` 增加 `padding-left: 320px`。
-5. **左上角触发按钮压住标题**：桌面端正打开时仍显示 → `.container.sidebar-open .sidebar-trigger { display: none }`。
-
-另外把 `bookmark-sync.js` 的页面读写串行化（`serialize()`）：首次导入和星标镜像并发时会互相覆盖（实测丢过 4 个页面）。
-
-实测结果：首次安装自动导入 4 页/11 条；浏览器星标 → 分类移动 + 主题即时出现；主题添加 → 浏览器书签写入；二级分类过滤/「全部」/空状态/设置面板/性能模式切换均正常；控制台无异常；页面 DCL ~71ms、load ~85ms，图标走本地 `_favicon`（64×64，零网络）。
-
-
-### 设置面板滚动 + 大量书签性能（v1.8）
-
-**设置面板不能滚动**：后置的 "Settings Panel Polish" 样式把 `.settings-panel` 写成了 `overflow: hidden !important`，内容超过一屏就滚不动。改为 `overflow-y: auto !important` + `overscroll-behavior: contain`，实测滚轮 scrollTop 0 → 659（clientHeight 583 / scrollHeight 1242），粘性标题保持正常。
-
-**大量书签性能**（Chrome 155 CDP，单页 300 条书签，软件渲染环境）：
-
-| 指标 | 优化前 | 优化后 |
-| --- | --- | --- |
-| 整页渲染 | 7ms | 4–5ms |
-| saveData | 6.7ms | 4–5ms |
-| 浏览器星标 → 主题出现 | 47ms | 30–33ms |
-| 滚动平均帧间隔 | 61ms | 47.8ms |
-| 滚动 p95 | 182ms | 118ms |
-
-做法：
-- **事件委托**：书签的 click / keydown / contextmenu 统一挂到 `#squaresContainer`，拖拽（dragstart/dragover/drop/dragend）也改为容器委托。300 条书签少建约 **2400 个监听器**（每项 3 个交互 + 5 个拖拽）。
-- **差量更新**：星标同步新增书签时只 append 一个新节点，不再 `innerHTML=''` 重建全页；删除时只移除尾部节点，顺序不连续才回退全量渲染。
-- **计数不再重绘侧边栏**：`bookmarkPages` 变化若结构未变，只更新 `.page-count` 文本与 aria-label。
-- **性能模式**：去掉每个书签方块的 `box-shadow` / 边框，缩短过渡时间，降低重绘成本。
-
-回归验证：拖拽排序后 DOM 顺序与 storage 一致、右键菜单正常、星标同步后侧边栏计数正确（301）、设置面板滚轮可用。
-
-
-### 移除侧边栏收起后的悬浮页面图标（v1.9）
-
-- `index.html` 删除 `#floatingPageIcons` 容器
-- `page-manager.js` 删除 `renderFloatingIcons()` 及全部调用
-- `main.js` 删除侧边栏打开/关闭时对悬浮图标的 show/hide 逻辑
-- `ui.css` 删除 `.floating-page-icons` / `.floating-page-icon` / `.page-tooltip` 的所有规则（含响应式与设计覆盖块）
-
-侧边栏收起后左侧只剩左上角的展开按钮；Chrome 实测：`#floatingPageIcons` 不存在、`.floating-page-icon` 0 个、样式表里无相关规则，侧边栏开合、页面切换/新建/删除都正常，控制台无报错。
-
 
 ### v2.0 架构重构：性能 + 排版修复
 
@@ -318,3 +305,28 @@ node tools/compare.mjs --before audit/before --after audit/after
 ```
 
 浏览器验证默认 `--headless=new` 后台运行，不弹窗。
+
+## 📦 版本历史
+
+| 版本 | 主要变化 |
+| --- | --- |
+| **v2.0** | 架构重构：ESM 分层 + 单一数据源 + CSS 分层；排版 P0 103→0、P1 75→0；单条更新 -64%、滚动 p95 -89% |
+| v1.9 | 移除侧栏收起后的悬浮页面图标及相关代码 |
+| v1.8 | 设置面板滚动修复 + 大量书签性能优化 |
+| v1.7 | 移动端抽屉层级修复 + 前端骨架审计 |
+| v1.6 | 真实 Chrome 实测修复 6 个 bug（页面切换报错、星标不同步等） |
+| v1.5 | 图标本地化（`_favicon`）、性能模式默认开启 |
+| v1.0 | 新标签页 + 智能书签分类融合 |
+
+v1.5–v1.9 的详细开发记录已迁移到 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
+
+## 📚 文档导航
+
+| 文档 | 内容 |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | v2.0 模块契约、目录结构、布局规范与落地记录 |
+| [docs/LAYOUT-AUDIT.md](docs/LAYOUT-AUDIT.md) | v1.9 基线布局审计（73 样本 / 194 条问题） |
+| [docs/LAYOUT-AFTER.md](docs/LAYOUT-AFTER.md) | v2.0 布局验收（P0/P1 清零，逐项 before→after 证据） |
+| [docs/PERF-BASELINE.md](docs/PERF-BASELINE.md) / [docs/PERF-AFTER.md](docs/PERF-AFTER.md) | 性能基线与 v2.0 对比/预算判定 |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | 历史版本记录（v1.5–v1.9） |
+| [tools/](tools/) | headless CDP 审计 / 性能 / 功能回归工具 |
