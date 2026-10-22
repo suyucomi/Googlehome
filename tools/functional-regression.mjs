@@ -179,7 +179,8 @@ async function main() {
         readyState: document.readyState,
         items: document.querySelectorAll('.square-container').length,
         pageItems: document.querySelectorAll('.bookmark-page-item').length,
-        title: document.querySelector('h1.page-title') ? 'h1' : (document.querySelector('.page-title') ? '.page-title' : 'none'),
+        pageTitle: Boolean(document.querySelector('h1.page-title') || document.querySelector('.page-title')),
+        searchBox: Boolean(document.querySelector('.search-container')),
         bootState: document.documentElement.dataset.boot || null,
         stylesheets: document.styleSheets.length,
         modules: document.querySelectorAll('script[type="module"]').length,
@@ -190,6 +191,8 @@ async function main() {
       if (r.readyState !== 'complete') throw new Error(`readyState=${r.readyState}`);
       if (r.items !== 300) throw new Error(`书签网格 ${r.items} !== 300`);
       if (r.pageItems !== 10) throw new Error(`侧栏页面 ${r.pageItems} !== 10`);
+      if (r.pageTitle) throw new Error('搜索框上方的标题行应已移除（.page-title）');
+      if (!r.searchBox) throw new Error('缺少搜索框');
       if (errs.length) throw new Error(`控制台错误: ${errs.slice(0, 3).join(' | ')}`);
       return r;
     });
@@ -462,21 +465,20 @@ async function main() {
     });
 
     // ================= 11. DOM 卫生 / 可访问性 =================
-    await runCheck('dom/hygiene', 'DOM 卫生：重复 id / 原生交互 / h1 标题 / 模块脚本', async () => {
+    await runCheck('dom/hygiene', 'DOM 卫生：重复 id / 原生交互 / 主地标与搜索框 / 模块脚本', async () => {
       const r = await page.evaluate(`(() => {
         const ids = Array.from(document.querySelectorAll('[id]')).map((e) => e.id);
         const dupIds = ids.filter((id, i) => ids.indexOf(id) !== i);
         const buttons = Array.from(document.querySelectorAll('button'));
         const noType = buttons.filter((b) => !b.getAttribute('type')).length;
-        const h1 = document.querySelector('h1.page-title');
-        const titleRect = h1 ? { h: h1.getBoundingClientRect().height, font: parseFloat(getComputedStyle(h1).fontSize) } : null;
+        const pageTitle = document.querySelector('.page-title, h1.page-title');
         return {
           dupIds: Array.from(new Set(dupIds)),
           buttons: buttons.length,
           buttonsNoType: noType,
-          h1: !!h1,
-          titleRect,
-          titleText: h1 ? h1.textContent.trim() : null,
+          main: !!document.querySelector('main.app-main'),
+          search: !!document.querySelector('.search-container'),
+          pageTitle: !!pageTitle,
           moduleScripts: document.querySelectorAll('script[type="module"]').length,
           allScripts: document.scripts.length,
           squareItems: document.querySelectorAll('.square-list-item').length,
@@ -484,8 +486,9 @@ async function main() {
         };
       })()`);
       if (r.dupIds.length) throw new Error(`重复 id: ${r.dupIds.join(',')}`);
-      if (!r.h1) throw new Error('缺少真实 <h1 class="page-title">');
-      if (r.titleRect && r.titleRect.font && r.titleRect.h < r.titleRect.font * 0.8) throw new Error(`标题被压扁: h=${r.titleRect.h} font=${r.titleRect.font}`);
+      if (!r.main) throw new Error('缺少 <main class="app-main"> 主地标');
+      if (!r.search) throw new Error('缺少搜索框');
+      if (r.pageTitle) throw new Error('搜索框上方的标题行应已移除（.page-title）');
       return r;
     });
 

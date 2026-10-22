@@ -51,8 +51,15 @@ function pageMeasure(opts) {
     titleH1: rectOf(q('h1.page-title')),
   };
 
-  // 标题：重构后是真实 <h1 class="page-title">，重构前是 .container::before 伪元素打字动画
+  // 标题：v2.0 为真实 <h1 class="page-title">，v2.0.1 起已移除；更早版本是 .container::before 伪元素。
   const container = q('.container');
+  const pseudoTitleText = (() => {
+    if (!container) return '';
+    try {
+      const c = getComputedStyle(container, '::before').content;
+      return c && c !== 'none' && c !== 'normal' ? String(c) : '';
+    } catch (e) { return ''; }
+  })();
   let title = null;
   if (els.titleH1) {
     const h1el = q('h1.page-title');
@@ -71,7 +78,7 @@ function pageMeasure(opts) {
         } catch (e) { return false; }
       });
     } catch (e) { title.animatesWidth = false; }
-  } else if (container) {
+  } else if (container && pseudoTitleText) {
     const ps = getComputedStyle(container, '::before');
     const ccs = getComputedStyle(container);
     const c = container.getBoundingClientRect();
@@ -94,6 +101,8 @@ function pageMeasure(opts) {
       fontSize: titleFontSize, lineHeight: Number.isFinite(lh) ? lh : null,
       animatesWidth: /premiumTitleTyping/.test(String(ps.animationName || '')),
     };
+  } else {
+    title = { kind: 'none', text: null, animatesWidth: false };
   }
   els.title = title;
 

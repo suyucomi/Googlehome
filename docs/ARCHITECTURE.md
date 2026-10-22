@@ -166,7 +166,7 @@ export function mountSettingsPanel(...);
 
 ## 4. HTML 结构（Lead 负责）
 
-- 顶部：真实 `<h1 class="page-title">` 替代 `.container::before` 伪元素打字动画（避免宽度动画造成回流/CLS）。
+- 顶部：不放页面标题行（v2.0.1 起移除搜索框上方的 `<h1 class="page-title">`；保留 `<main>` 地标与 `aria-label`，避免无意义占位与回流）。
 - 内容壳：`.container > .app-main`，`.app-main` 负责居中与滚动；搜索、文件夹条、书签网格都放在其中。
 - 设置面板：`<aside class="settings-panel"><header>…</header><div class="settings-body">…</div></aside>`，header 固定、body 自己滚动。
 - 所有 `<button>` 显式 `type="button"`；搜索/设置/侧栏补齐 `aria-expanded`、`aria-controls`、`aria-hidden`。
@@ -248,6 +248,8 @@ src/
   `html[data-app-ready="true"] .container` 下，首帧前类名生效不播放动画。
 - 结果（真实 Chrome headless）：CLS **0**（打开设置前后都 0）；300 条书签时
   title h=31px / search h=58px / squares 2830px 不被压缩 / 无横向溢出 / 控制台 0 error。
+  > v2.0.1 起已按需求移除搜索框上方的页面标题行（`.page-title` / `<h1>`），
+  > 相关样式与审计/回归断言同步清理；首屏布局与 CLS 结论不变。
 
 ### 8.4 数据兼容
 

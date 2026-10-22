@@ -101,7 +101,6 @@ body.perf-mode .square-container {
   }
 
   /* 一次性入场动画直接呈现最终状态 */
-  .page-title,
   .name-dialog,
   .name-dialog-header,
   .name-dialog-content,

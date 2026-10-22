@@ -269,6 +269,10 @@ export function deriveIssues(sample) {
   };
   const els = m.els || {};
   const st = m.state || {};
+  // 有些元素可能被产品需求移除（如 v2.0.1 移除的页面标题），此时 metrics 里只有 kind/none 没有几何信息
+  const hasGeometry = (r) => Boolean(r) &&
+    Number.isFinite(r.x) && Number.isFinite(r.y) && Number.isFinite(r.w) && Number.isFinite(r.h) &&
+    Number.isFinite(r.right) && Number.isFinite(r.bottom);
 
   // 1) 文档/容器横向溢出
   if (m.doc.overflowX || (m.container && m.container.innerOverflowX > 1)) {
@@ -304,7 +308,7 @@ export function deriveIssues(sample) {
   for (const [a, b] of pairs) {
     const ra = els[a];
     const rb = els[b];
-    if (!ra || !rb) continue;
+    if (!hasGeometry(ra) || !hasGeometry(rb)) continue;
     if (a === 'sidebar' && !st.sidebarOpen) continue;
     if (a === 'trigger' && !st.triggerVisible) continue;
     if (a === 'folderBar' && !st.folderFilter) continue;
@@ -496,7 +500,7 @@ export function deriveIssues(sample) {
   }
   // 标题被 flex 压缩/裁切（v1.9 实测：300 条书签时 .container::before 高度 28.59px → 4.65px / 移动端 1.17px）
   const titleEl = m.els.title;
-  if (titleEl && (m.state?.squareItemCount || 0) > 0) {
+  if (titleEl && titleEl.kind !== 'none' && (m.state?.squareItemCount || 0) > 0) {
     const expectedH = titleEl.fontSize ? titleEl.fontSize * 1.1 : (titleEl.lineHeight || 28);
     const realH = titleEl.h;
     if (realH > 0 && realH < Math.max(0.5 * expectedH, 10)) {

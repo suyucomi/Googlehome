@@ -1,5 +1,7 @@
 # Googlehome 布局审计报告（重构后 v2.0 · after）
 
+> 注：v2.0.1 已按需求移除搜索框上方的页面标题行（`.page-title` / `<h1>`）；本报告中标题相关指标为 v2.0 验收时状态，其余结论不变。
+
 > 审计对象：`src/`（manifest `version: "2.0"`，8 层 CSS + ESM 单入口，CSS 总行数 2406、`!important` 仅 32 处且只在 `perf.css`）
 > 审计方式：真实 Chrome **155.0.8059.85**（**headless=new 后台模式**，按用户指令）+ CDP（`tools/audit.mjs`），headless 下扩展加载/截图/布局测量均正常
 > 审计时间：2026-10-22 · 样本：**73 个**（12 档视口 × 12 状态，与基线 `docs/LAYOUT-AUDIT.md` 完全同矩阵）· 截图：`audit/after/screens/`（73 张）· 原始数据：`audit/after/layout.json`

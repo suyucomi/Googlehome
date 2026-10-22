@@ -1,8 +1,14 @@
-# 版本历史（v1.5 – v1.9）
+# 版本历史（v1.5 – v2.0.1）
 
-> 本文件由 README 迁移而来，保留 v1.5–v1.9 的开发记录。
+> 本文件由 README 迁移而来，保留 v1.5–v1.9 的详细开发记录；v2.0 与 v2.0.1 摘要见下。
 > v2.0 的架构重构与验收结果见 [README](../README.md#-版本历史) 与
 > [ARCHITECTURE.md](ARCHITECTURE.md) / [LAYOUT-AFTER.md](LAYOUT-AFTER.md) / [PERF-AFTER.md](PERF-AFTER.md)。
+
+## v2.0.1（2026-10）
+
+- 按需求移除搜索框上方的页面标题行（`<h1 class="page-title">What are you looking for today?</h1>`）
+- 清理 `.page-title` 样式 / keyframes / reduced-motion 规则；审计与功能回归脚本改为容忍无标题并断言标题行已移除
+- 搜索框自动上移（布局其余不变），README 预览图同步更新
 
 ## v2.0（2026-10）
 

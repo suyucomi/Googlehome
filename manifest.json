@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Google 主页 · 智能书签",
-  "version": "2.0",
+  "version": "2.0.1",
   "description": "简洁的新标签页，内置书签智能分类：首次使用按浏览器书签建分类，收藏时同时写入浏览器书签和主题分类。",
   "permissions": [
     "tabs",

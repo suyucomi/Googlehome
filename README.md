@@ -8,7 +8,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="manifest version"/>
-  <img src="https://img.shields.io/badge/version-2.0.0-7c83ff?style=flat-square" alt="version"/>
+  <img src="https://img.shields.io/badge/version-2.0.1-7c83ff?style=flat-square" alt="version"/>
   <img src="https://img.shields.io/badge/tests-64%20passing-3fb950?style=flat-square" alt="tests"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="license"/>
   <img src="https://img.shields.io/badge/Platform-Chrome-yellow?style=flat-square" alt="platform"/>
@@ -268,7 +268,7 @@ node tests/run-tests.mjs
 #### 排版修复（全部由真实 Chrome 155 + CDP 审计驱动）
 
 - **P0 侧栏展开时内容越界/被侧栏盖住**（834/900px 视口：网格越出视口 60–93px、与侧栏重叠 3.1 万–7.7 万 px²、方块中心点击命中侧栏）：改为 `margin-left/width` 让位 + 内部块 `width:100%/max-width:min(720px,100%)`，不再用 `padding-left` + `100vw`。
-- **P0 300 条书签时标题被 flex 压扁**（28.6px → 4.6px）：改用真实 `<h1 class="page-title">` + `flex:0 0 auto`，四个主内容子项都不参与压缩。
+- **P0 300 条书签时标题被 flex 压扁**（28.6px → 4.6px）：改用真实 `<h1 class="page-title">` + `flex:0 0 auto`。**（v2.0.1 起已按需求移除该标题行，相关样式/审计断言同步清理；下方性能与布局数据不受影响。）**
 - **P1 不可见的页面操作按钮仍可点击**（53/73 样本误触风险）：`visibility:hidden + pointer-events:none`，hover/focus-within 才显示。
 - **P1 移动端搜索下拉左侧被裁 60px**：去掉居中 `translateX(-50%)`，改为左对齐 + 视口 clamp。
 - **P1 设置面板打开时 `aria-hidden` 仍为 true、背景无 inert、焦点不进**：完整 aria/inert/焦点陷阱/Esc 关闭/焦点回归。

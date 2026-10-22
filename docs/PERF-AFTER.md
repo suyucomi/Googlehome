@@ -1,5 +1,7 @@
 # Googlehome 性能基线对比（v2.0 · after）
 
+> 注：v2.0.1 已按需求移除搜索框上方的页面标题行（`.page-title` / `<h1>`）；本报告中标题相关指标为 v2.0 验收时状态，其余结论不变。
+
 > 审计对象：`src/`（manifest 2.0，ESM 单入口 + 8 层 CSS）· 真实 Chrome 155（**headless=new** 后台模式）+ CDP（`tools/perf-audit.mjs`）
 > 数据规模与基线完全一致：**10 个页面，当前页 300 条书签，其余 8 页各 50 条、1 页空**；视口 1600×900
 > 原始数据：`audit/after/perf.json`（与 `audit/before/perf.json` 同结构）· 对比表：`audit/after/compare.md` / `compare.json`
